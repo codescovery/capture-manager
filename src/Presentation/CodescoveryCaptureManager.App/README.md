@@ -1,4 +1,4 @@
-# CODESCOVERY
+﻿# CODESCOVERY
 ## CodescoveryCaptureManager
 
 A simple app that will help streamers to select  which windows they want to share with their viewers. 

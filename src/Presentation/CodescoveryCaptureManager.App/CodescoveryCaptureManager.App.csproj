@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+	  <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
+	  <SignAssembly>false</SignAssembly>
+	  <Authors>Vinicius Andrade</Authors>
+	  <Company>Codescovery</Company>
+	  <Product>CodescoveryCaptureManager</Product>
+	  <PackageId>CodescoveryCaptureManager</PackageId>
+	  <PackageIcon>icon32.png</PackageIcon>
+	  <RepositoryUrl>https://github.com/codescovery/captureManager</RepositoryUrl>
+	  <RepositoryType>git</RepositoryType>
+	  <Copyright>Codescovery</Copyright>
+	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
+	  <Description>Multiple window capture application, that will display the focused windows only.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Assets\menu.png" />
+    <ProjectReference Include="..\..\Domain\CodescoveryCaptureManager.Domain\CodescoveryCaptureManager.Domain.csproj" />
+    <Resource Include="Assets\icon32.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </Resource>
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <Resource Include="Assets\menu.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Resource>
+  </ItemGroup>
+
+</Project>
