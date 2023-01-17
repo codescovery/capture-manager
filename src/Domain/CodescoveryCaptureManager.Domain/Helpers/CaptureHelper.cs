@@ -19,5 +19,10 @@ namespace CodescoveryCaptureManager.Domain.Helpers
 
             return item;
         }
+        public static void SetWindow(this GraphicsCapturePicker picker, IntPtr hwnd)
+        {
+            var interop = (IInitializeWithWindow)(object)picker;
+            interop.Initialize(hwnd);
+        }
     }
 }

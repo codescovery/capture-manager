@@ -3,15 +3,18 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Numerics;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
+using Windows.Graphics.Capture;
 using Windows.UI.Composition;
 using WindowsDesktop;
 using CodescoveryCaptureManager.Domain.Helpers;
 using CodescoveryCaptureManager.Domain.Interfaces;
 using CodescoveryCaptureManager.Domain.Services;
 using CodescoveryCaptureManager.Domain.Structs;
+using MaterialDesignThemes.Wpf;
 using CompositionTarget = Windows.UI.Composition.CompositionTarget;
 using ContainerVisual = Windows.UI.Composition.ContainerVisual;
 
@@ -24,6 +27,7 @@ namespace CodescoveryCaptureManager.App.Windows
     public partial class CapturedWindows : Window, IDisposable
     {
 
+        private readonly IntPtr _capturableWindowHandle; 
         private readonly ICapturableWindowsMonitoringService _capturableWindowsMonitoringService;
         private readonly IWindowsProcessServices _windowsProcessServices;
         private readonly Compositor _compositor;
@@ -32,17 +36,21 @@ namespace CodescoveryCaptureManager.App.Windows
         private CompositionTarget _compositionTarget;
         private VirtualDesktop _virtualDesktop;
         private readonly VirtualDesktop _mainVirtualDesktop;
+        private bool _isMenuExpanded=true;
+        
 
         public CapturedWindows(ICapturableWindowsMonitoringService capturableWindowsMonitoringService, IWindowsProcessServices windowsProcessServices)
         {
+            
             InitializeComponent();
+            _capturableWindowHandle= new WindowInteropHelper(this).Handle;
             _capturableWindowsMonitoringService = capturableWindowsMonitoringService;
             _windowsProcessServices = windowsProcessServices;
             _compositor = new Compositor();
             _containerVisual = InitializeContainerVisual();
             _windowCaptureService = new WindowCaptureService(_compositor);
             _mainVirtualDesktop = GetMainVirtualDesktop();
-
+            SwitchMenuExpanderIcon();
             SetupEvents();
             StartCapturing();
         }
@@ -108,8 +116,8 @@ namespace CodescoveryCaptureManager.App.Windows
 
         private void SettingsMenu_OnSubmenuOpened(object sender, RoutedEventArgs e)
         {
-            CurrentWindowTitle.Text = Title;
-            CreateOpenedWindowsMenuItems(_windowsProcessServices.GetOpenedWindows(this));
+            //CurrentWindowTitle.Text = Title;
+            //CreateOpenedWindowsMenuItems(_windowsProcessServices.GetOpenedWindows(this));
             ConfigureVirtualDesktopActions();
         }
 
@@ -126,32 +134,46 @@ namespace CodescoveryCaptureManager.App.Windows
                 MoveToVirtualDesktop.IsEnabled = true;
         }
 
-        private void CreateOpenedWindowsMenuItems(IEnumerable<CapturableWindow> openedWindows)
+        public async void OpenCapturePicker(object sender, RoutedEventArgs e)
         {
+            Console.WriteLine("OpenCapturePicker");
+            //var picker = new GraphicsCapturePicker();
+            ////picker.
+            //picker.SetWindow(_capturableWindowHandle);
+            //var item = await picker.PickSingleItemAsync();
 
-            SelectCapturingWindow.Items.Clear();
-            SelectCapturingWindow.StaysOpenOnClick = true;
-            foreach (var openedWindow in openedWindows)
-            {
-                var openedWindowMenuItem = new MenuItem
-                {
-                    Header = openedWindow.Name,
-                    IsCheckable = true,
-                    IsChecked = _capturableWindowsMonitoringService.IsMonitored(openedWindow.Handle),
-                    StaysOpenOnClick = true
-                };
-                openedWindowMenuItem.Click += delegate (object sender, RoutedEventArgs args)
-                {
-                    _windowCaptureService.StopCapture();
-                    if (_capturableWindowsMonitoringService.IsMonitored(openedWindow.Handle))
-                        _capturableWindowsMonitoringService.RemoveMonitoringWindow(openedWindow.Handle);
-                    else
-                        _capturableWindowsMonitoringService.AddMonitoringWindow(openedWindow);
-                    _capturableWindowsMonitoringService.FocusFirstMonitoringWindow();
-                };
-                SelectCapturingWindow.Items.Add(openedWindowMenuItem);
-            }
+            //if (item != null)
+            
+            //    _windowCaptureService.StartCapture(item, IntPtr.Zero);
+            //    //sample.StartCaptureFromItem(item);
+            
         }
+        //private void CreateOpenedWindowsMenuItems(IEnumerable<CapturableWindow> openedWindows)
+        //{
+
+        //    SelectCapturingWindow.Items.Clear();
+        //    SelectCapturingWindow.StaysOpenOnClick = true;
+        //    foreach (var openedWindow in openedWindows)
+        //    {
+        //        var openedWindowMenuItem = new MenuItem
+        //        {
+        //            Header = openedWindow.Name,
+        //            IsCheckable = true,
+        //            IsChecked = _capturableWindowsMonitoringService.IsMonitored(openedWindow.Handle),
+        //            StaysOpenOnClick = true
+        //        };
+        //        openedWindowMenuItem.Click += delegate (object sender, RoutedEventArgs args)
+        //        {
+        //            _windowCaptureService.StopCapture();
+        //            if (_capturableWindowsMonitoringService.IsMonitored(openedWindow.Handle))
+        //                _capturableWindowsMonitoringService.RemoveMonitoringWindow(openedWindow.Handle);
+        //            else
+        //                _capturableWindowsMonitoringService.AddMonitoringWindow(openedWindow);
+        //            _capturableWindowsMonitoringService.FocusFirstMonitoringWindow();
+        //        };
+        //        SelectCapturingWindow.Items.Add(openedWindowMenuItem);
+        //    }
+        //}
 
         public void Dispose()
         {
@@ -174,7 +196,13 @@ namespace CodescoveryCaptureManager.App.Windows
         private void MenuExpander_OnClick(object sender, RoutedEventArgs e)
         {
             CapturedWindowsMenu.Visibility = CapturedWindowsMenu.Visibility == Visibility.Collapsed ? Visibility.Visible : Visibility.Collapsed;
-            MenuExpander.IsExpanded = CapturedWindowsMenu.Visibility != Visibility.Collapsed;
+            _isMenuExpanded = CapturedWindowsMenu.Visibility != Visibility.Collapsed;
+            SwitchMenuExpanderIcon();
+        }
+
+        private void SwitchMenuExpanderIcon()
+        {
+            MenuExpander.Kind = _isMenuExpanded ? PackIconKind.ArrowUp : PackIconKind.ArrowDown;
         }
 
         private void CapturedWindows_OnClosing(object sender, CancelEventArgs e)

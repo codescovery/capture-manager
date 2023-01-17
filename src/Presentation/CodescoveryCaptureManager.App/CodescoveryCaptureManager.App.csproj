@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <None Remove="Assets\menu.png" />
+    <PackageReference Include="MaterialDesignThemes" Version="4.7.1" />
     <ProjectReference Include="..\..\Domain\CodescoveryCaptureManager.Domain\CodescoveryCaptureManager.Domain.csproj" />
     <Resource Include="Assets\icon32.png">
       <Pack>True</Pack>

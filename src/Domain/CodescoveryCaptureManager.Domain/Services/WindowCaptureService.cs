@@ -7,7 +7,7 @@ using CodescoveryCaptureManager.Domain.Helpers;
 
 namespace CodescoveryCaptureManager.Domain.Services
 {
-    public class WindowCaptureService 
+    public class WindowCaptureService :IDisposable
     {
         private readonly Compositor _compositor;
         private readonly ContainerVisual _root;

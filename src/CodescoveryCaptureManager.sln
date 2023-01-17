@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30907.101
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33213.308
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CodescoveryCaptureManager.App", "Presentation\CodescoveryCaptureManager.App\CodescoveryCaptureManager.App.csproj", "{B6F38E5C-691C-47DD-8A3D-C9DE98A03531}"
 EndProject
@@ -9,7 +9,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "1.Presentation", "1.Present
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "2.Domain", "2.Domain", "{AACC7E49-D8D3-464E-A929-D80092AFDD7A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodescoveryCaptureManager.Domain", "Domain\CodescoveryCaptureManager.Domain\CodescoveryCaptureManager.Domain.csproj", "{386660DA-8E3F-427A-B356-BC2EC01A03ED}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CodescoveryCaptureManager.Domain", "Domain\CodescoveryCaptureManager.Domain\CodescoveryCaptureManager.Domain.csproj", "{386660DA-8E3F-427A-B356-BC2EC01A03ED}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{5BB49B9D-D2B2-4289-8AFD-9225CDA1816A}"
+	ProjectSection(SolutionItems) = preProject
+		..\.gitignore = ..\.gitignore
+		..\LICENSE = ..\LICENSE
+		..\README.md = ..\README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

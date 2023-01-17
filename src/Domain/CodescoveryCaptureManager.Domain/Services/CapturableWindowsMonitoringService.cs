@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using CodescoveryCaptureManager.Domain.Constants;
 using CodescoveryCaptureManager.Domain.Interfaces;
 using CodescoveryCaptureManager.Domain.Interop;
 using CodescoveryCaptureManager.Domain.Structs;
@@ -30,7 +31,7 @@ namespace CodescoveryCaptureManager.Domain.Services
             FocusFirstMonitoringWindow();
             while (!_cancellationTokenSource.IsCancellationRequested)
             {
-                await Task.Delay(100);
+                await Task.Delay(CapturableWindowDefaultValues.RefreshRate);
                 var activeCapturableWindowInteropHandle = NativeMethods.GetActiveWindow();
                 if(_capturableWindows==null) continue;
                 if (!_capturableWindows.Any() ) continue;
