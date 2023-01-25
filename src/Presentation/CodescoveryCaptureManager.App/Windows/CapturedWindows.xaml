@@ -32,8 +32,11 @@
                 </MenuItem>
             </MenuItem>
 
-            <MenuItem Header="+" Click="OpenCapturePicker">
-                <materialDesign:PackIcon Kind="Plus"  />
+            <MenuItem Click="OpenCapturePicker">
+                <MenuItem.Header>
+                    <materialDesign:PackIcon Kind="Plus"  />
+                </MenuItem.Header>
+              
             </MenuItem>
 
         </Menu>

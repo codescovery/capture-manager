@@ -27,7 +27,7 @@ namespace CodescoveryCaptureManager.App.Windows
     public partial class CapturedWindows : Window, IDisposable
     {
 
-        private readonly IntPtr _capturableWindowHandle; 
+        private readonly IntPtr _capturableWindowHandle;
         private readonly ICapturableWindowsMonitoringService _capturableWindowsMonitoringService;
         private readonly IWindowsProcessServices _windowsProcessServices;
         private readonly Compositor _compositor;
@@ -36,14 +36,14 @@ namespace CodescoveryCaptureManager.App.Windows
         private CompositionTarget _compositionTarget;
         private VirtualDesktop _virtualDesktop;
         private readonly VirtualDesktop _mainVirtualDesktop;
-        private bool _isMenuExpanded=true;
-        
+        private bool _isMenuExpanded = true;
+
 
         public CapturedWindows(ICapturableWindowsMonitoringService capturableWindowsMonitoringService, IWindowsProcessServices windowsProcessServices)
         {
-            
+
             InitializeComponent();
-            _capturableWindowHandle= new WindowInteropHelper(this).Handle;
+            _capturableWindowHandle = new WindowInteropHelper(this).Handle;
             _capturableWindowsMonitoringService = capturableWindowsMonitoringService;
             _windowsProcessServices = windowsProcessServices;
             _compositor = new Compositor();
@@ -137,96 +137,99 @@ namespace CodescoveryCaptureManager.App.Windows
         public async void OpenCapturePicker(object sender, RoutedEventArgs e)
         {
             Console.WriteLine("OpenCapturePicker");
-            //var picker = new GraphicsCapturePicker();
-            ////picker.
-            //picker.SetWindow(_capturableWindowHandle);
-            //var item = await picker.PickSingleItemAsync();
+            await Dispatcher.InvokeAsync(OpenCapturePicker);
 
-            //if (item != null)
-            
-            //    _windowCaptureService.StartCapture(item, IntPtr.Zero);
-            //    //sample.StartCaptureFromItem(item);
-            
-        }
-        //private void CreateOpenedWindowsMenuItems(IEnumerable<CapturableWindow> openedWindows)
-        //{
-
-        //    SelectCapturingWindow.Items.Clear();
-        //    SelectCapturingWindow.StaysOpenOnClick = true;
-        //    foreach (var openedWindow in openedWindows)
-        //    {
-        //        var openedWindowMenuItem = new MenuItem
-        //        {
-        //            Header = openedWindow.Name,
-        //            IsCheckable = true,
-        //            IsChecked = _capturableWindowsMonitoringService.IsMonitored(openedWindow.Handle),
-        //            StaysOpenOnClick = true
-        //        };
-        //        openedWindowMenuItem.Click += delegate (object sender, RoutedEventArgs args)
-        //        {
-        //            _windowCaptureService.StopCapture();
-        //            if (_capturableWindowsMonitoringService.IsMonitored(openedWindow.Handle))
-        //                _capturableWindowsMonitoringService.RemoveMonitoringWindow(openedWindow.Handle);
-        //            else
-        //                _capturableWindowsMonitoringService.AddMonitoringWindow(openedWindow);
-        //            _capturableWindowsMonitoringService.FocusFirstMonitoringWindow();
-        //        };
-        //        SelectCapturingWindow.Items.Add(openedWindowMenuItem);
-        //    }
-        //}
-
-        public void Dispose()
-        {
-            StopCapturing();
-            _windowsProcessServices?.Dispose();
-            _capturableWindowsMonitoringService?.Dispose();
         }
 
-        private void CapturedWindows_OnLoaded(object sender, RoutedEventArgs e)
-        {
-            _compositionTarget = InitializeDesktopWindowTarget();
-            _compositionTarget.Root = _containerVisual;
-            _containerVisual.Children.InsertAtTop(_windowCaptureService.GetVisual());
-        }
-        private CompositionTarget InitializeDesktopWindowTarget()
-        {
-            var compositionTarget = _compositor.CreateDesktopWindowTarget(new WindowInteropHelper(this).Handle, true);
-            return compositionTarget;
-        }
-        private void MenuExpander_OnClick(object sender, RoutedEventArgs e)
-        {
-            CapturedWindowsMenu.Visibility = CapturedWindowsMenu.Visibility == Visibility.Collapsed ? Visibility.Visible : Visibility.Collapsed;
-            _isMenuExpanded = CapturedWindowsMenu.Visibility != Visibility.Collapsed;
-            SwitchMenuExpanderIcon();
-        }
+    private async void OpenCapturePicker()
+    {
+        var picker = new GraphicsCapturePicker();
 
-        private void SwitchMenuExpanderIcon()
-        {
-            MenuExpander.Kind = _isMenuExpanded ? PackIconKind.ArrowUp : PackIconKind.ArrowDown;
-        }
-
-        private void CapturedWindows_OnClosing(object sender, CancelEventArgs e)
-        {
-            StopCapturing();
-            Dispose();
-        }
-
-        private void MoveToVirtualDesktop_OnClick(object sender, RoutedEventArgs e)
-        {
-            if (_virtualDesktop == null && !VirtualDesktop.IsSupported) return;
-            _virtualDesktop = CreateNewDesktop();
-
-            _virtualDesktop.SwitchAndMove(this);
-            _mainVirtualDesktop.Switch();
-            MoveToVirtualDesktop.IsEnabled = false;
-        }
-
-        private void CloseVirtualDesktop_OnClick(object sender, RoutedEventArgs e)
-        {
-            if (VirtualDesktop.GetDesktops().ToList().Exists(p => p.Id.Equals(_virtualDesktop.Id)))
-                _virtualDesktop?.Remove(_mainVirtualDesktop);
-            _virtualDesktop = null;
-            CloseVirtualDesktop.IsEnabled = false;
-        }
+        picker.SetWindow(_capturableWindowHandle);
+        var item = await picker.PickSingleItemAsync();
+        if (item == null) return;
+        _windowCaptureService.StartCapture(item, _capturableWindowHandle);
     }
+    
+    //private void CreateOpenedWindowsMenuItems(IEnumerable<CapturableWindow> openedWindows)
+    //{
+
+    //    SelectCapturingWindow.Items.Clear();
+    //    SelectCapturingWindow.StaysOpenOnClick = true;
+    //    foreach (var openedWindow in openedWindows)
+    //    {
+    //        var openedWindowMenuItem = new MenuItem
+    //        {
+    //            Header = openedWindow.Name,
+    //            IsCheckable = true,
+    //            IsChecked = _capturableWindowsMonitoringService.IsMonitored(openedWindow.Handle),
+    //            StaysOpenOnClick = true
+    //        };
+    //        openedWindowMenuItem.Click += delegate (object sender, RoutedEventArgs args)
+    //        {
+    //            _windowCaptureService.StopCapture();
+    //            if (_capturableWindowsMonitoringService.IsMonitored(openedWindow.Handle))
+    //                _capturableWindowsMonitoringService.RemoveMonitoringWindow(openedWindow.Handle);
+    //            else
+    //                _capturableWindowsMonitoringService.AddMonitoringWindow(openedWindow);
+    //            _capturableWindowsMonitoringService.FocusFirstMonitoringWindow();
+    //        };
+    //        SelectCapturingWindow.Items.Add(openedWindowMenuItem);
+    //    }
+    //}
+
+    public void Dispose()
+    {
+        StopCapturing();
+        _windowsProcessServices?.Dispose();
+        _capturableWindowsMonitoringService?.Dispose();
+    }
+
+    private void CapturedWindows_OnLoaded(object sender, RoutedEventArgs e)
+    {
+        _compositionTarget = InitializeDesktopWindowTarget();
+        _compositionTarget.Root = _containerVisual;
+        _containerVisual.Children.InsertAtTop(_windowCaptureService.GetVisual());
+    }
+    private CompositionTarget InitializeDesktopWindowTarget()
+    {
+        var compositionTarget = _compositor.CreateDesktopWindowTarget(new WindowInteropHelper(this).Handle, true);
+        return compositionTarget;
+    }
+    private void MenuExpander_OnClick(object sender, RoutedEventArgs e)
+    {
+        CapturedWindowsMenu.Visibility = CapturedWindowsMenu.Visibility == Visibility.Collapsed ? Visibility.Visible : Visibility.Collapsed;
+        _isMenuExpanded = CapturedWindowsMenu.Visibility != Visibility.Collapsed;
+        SwitchMenuExpanderIcon();
+    }
+
+    private void SwitchMenuExpanderIcon()
+    {
+        MenuExpander.Kind = _isMenuExpanded ? PackIconKind.ArrowUp : PackIconKind.ArrowDown;
+    }
+
+    private void CapturedWindows_OnClosing(object sender, CancelEventArgs e)
+    {
+        StopCapturing();
+        Dispose();
+    }
+
+    private void MoveToVirtualDesktop_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (_virtualDesktop == null && !VirtualDesktop.IsSupported) return;
+        _virtualDesktop = CreateNewDesktop();
+
+        _virtualDesktop.SwitchAndMove(this);
+        _mainVirtualDesktop.Switch();
+        MoveToVirtualDesktop.IsEnabled = false;
+    }
+
+    private void CloseVirtualDesktop_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (VirtualDesktop.GetDesktops().ToList().Exists(p => p.Id.Equals(_virtualDesktop.Id)))
+            _virtualDesktop?.Remove(_mainVirtualDesktop);
+        _virtualDesktop = null;
+        CloseVirtualDesktop.IsEnabled = false;
+    }
+}
 }
