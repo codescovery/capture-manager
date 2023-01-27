@@ -6,39 +6,65 @@
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:local="clr-namespace:CodescoveryCaptureManager.App.Windows"
         mc:Ignorable="d"
-        Title="Captured Window" Height="458" Width="800"  WindowStyle="SingleBorderWindow" Loaded="CapturedWindows_OnLoaded" Closing="CapturedWindows_OnClosing">
+        Title="Captured Window" Height="458" Width="800"  Loaded="CapturedWindows_OnLoaded" Closing="CapturedWindows_OnClosing"
+        MouseLeftButtonDown="CapturedWindows_OnMouseLeftButtonDown"
+        MouseDoubleClick="CapturedWindows_OnMouseDoubleClick"
+        Cursor="SizeAll" WindowStyle="None" AllowsTransparency="True" WindowStartupLocation="CenterScreen" WindowState="Normal"
+        StateChanged="CapturedWindows_OnStateChanged"
+        >
+    <WindowChrome.WindowChrome>
+        <WindowChrome GlassFrameThickness="0" CornerRadius="5" CaptionHeight="0" >
+
+            <WindowChrome.ResizeBorderThickness>
+                <Thickness>1</Thickness>
+            </WindowChrome.ResizeBorderThickness>
+        </WindowChrome>
+    </WindowChrome.WindowChrome>
     <DockPanel Background="#222222">
 
-        <Menu Name="CapturedWindowsMenu"  DockPanel.Dock="Top" Margin="0"  MaxHeight="75" FontSize="12"  FontFamily="OCR A BT" Background="#222222" Foreground="White">
+        <Menu Name="CapturedWindowsMenu"  DockPanel.Dock="Top" Margin="0"  MaxHeight="75" FontSize="12"  FontFamily="OCR A BT" Background="#222222" Foreground="White"
+              MouseLeftButtonDown="CapturedWindowsMenu_OnMouseLeftButtonDown"
+              Cursor="Arrow">
             <Menu.ItemsPanel>
                 <ItemsPanelTemplate>
                     <DockPanel HorizontalAlignment="Right"/>
                 </ItemsPanelTemplate>
             </Menu.ItemsPanel>
+            <MenuItem HorizontalAlignment="Left" Padding="5">
+                <MenuItem.Header>
+                    <Image Source="../Assets/icon.png" Width="32" Height="32"/>
+                </MenuItem.Header>
+            </MenuItem>
+            <MenuItem>
+                <MenuItem.Header>
+                    <TextBox Name="CurrentWindowTitle" Width="300"  />
+                </MenuItem.Header>
+            </MenuItem>
             <MenuItem Name="SettingsMenu" SubmenuOpened="SettingsMenu_OnSubmenuOpened"   Background="#222222" Foreground="White" Cursor="Hand" >
                 <MenuItem.Header>
                     <materialDesign:PackIcon  Kind="Cog" Width="15"  />
                 </MenuItem.Header>
-                <!--<MenuItem.Icon>-->
-                    
-                <!--</MenuItem.Icon>-->
-                <!--<MenuItem Header="Select Capturing Window"  Name="SelectCapturingWindow" FontWeight="Regular" Foreground="Black"/>-->
-                <MenuItem Header="Change Window Title" IsCheckable="False" FontWeight="Regular"  Foreground="Black">
-                    <TextBox Name="CurrentWindowTitle" Width="300" />
-                </MenuItem>
                 <MenuItem Header="Virtual Desktop" IsEnabled="False"  Name="VirtualDesktopActions" FontWeight="Regular" Foreground="Black">
                     <MenuItem Header="Move to Virtual Desktop" Click="MoveToVirtualDesktop_OnClick" IsEnabled="False"   Name="MoveToVirtualDesktop" FontWeight="Regular" Foreground="Black"/>
                     <MenuItem Header="Close Virtual Desktop"  Click="CloseVirtualDesktop_OnClick" IsEnabled="False" Name="CloseVirtualDesktop" FontWeight="Regular" Foreground="Black"/>
                 </MenuItem>
             </MenuItem>
-
-            <MenuItem Click="OpenCapturePicker">
+            <MenuItem Name="WindowMinimizeButton" Click="WindowMinimizeButton_OnClick" Cursor="Hand">
                 <MenuItem.Header>
-                    <materialDesign:PackIcon Kind="Plus"  />
+                    <materialDesign:PackIcon Kind="Minimize"  />
                 </MenuItem.Header>
-              
             </MenuItem>
+            <MenuItem Name="WindowMaximizeButton" Click="MaximizeButton_OnClick" Cursor="Hand">
+                <MenuItem.Header>
+                    <materialDesign:PackIcon Kind="Maximize"  />
+                </MenuItem.Header>
 
+            </MenuItem>
+            <MenuItem Name="WindowCloseButton" Click="WindowCloseButton_OnClick" Cursor="Hand">
+                <MenuItem.Header>
+                    <materialDesign:PackIcon Kind="Close"  />
+                </MenuItem.Header>
+            </MenuItem>
         </Menu>
         <Button PreviewMouseLeftButtonDown="MenuExpander_OnClick"  MaxHeight="25"
                 DockPanel.Dock="Top"
@@ -49,18 +75,41 @@
                 BorderBrush="Transparent"
                 BorderThickness="0"
                 materialDesign:ElevationAssist.Elevation="Dp0"
+                Cursor="Hand"
                 >
-        <materialDesign:PackIcon 
-            Cursor="Hand" 
+            <materialDesign:PackIcon 
+            Cursor="Hand"
             
             Name="MenuExpander" 
             Kind="ArrowDown" 
            
             />
         </Button>
-            <!--<Expander Name="MenuExpander" IsExpanded="True" PreviewMouseLeftButtonDown="MenuExpander_OnClick" MaxHeight="25" DockPanel.Dock="Top" HorizontalAlignment="Right"/>-->
         <Grid Name="ScreenCaptureGrid">
-            <Rectangle Fill="#222222" />
+            
+        <Rectangle Fill="#222222" />
+        
         </Grid>
+        <Menu Name="FooterMenu" Grid.Row="1" VerticalAlignment="Bottom">
+            <Menu.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <DockPanel HorizontalAlignment="Right"/>
+                </ItemsPanelTemplate>
+            </Menu.ItemsPanel>
+
+            <MenuItem Click="OpenCapturePicker" Cursor="Hand" >
+                <MenuItem.Header>
+                    <materialDesign:PackIcon Kind="MonitorShare" Width="24" Height="24" />
+                </MenuItem.Header>
+            </MenuItem>
+        </Menu>
+
+        <!--<Expander Name="MenuExpander" IsExpanded="True" PreviewMouseLeftButtonDown="MenuExpander_OnClick" MaxHeight="25" DockPanel.Dock="Top" HorizontalAlignment="Right"/>-->
+        <!--<Grid Name="ScreenCaptureGrid">
+            -->
+        <!--<Rectangle Fill="#222222" />-->
+        <!--
+        </Grid>-->
+
     </DockPanel>
 </Window>

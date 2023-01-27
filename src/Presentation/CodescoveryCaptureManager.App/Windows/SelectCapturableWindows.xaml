@@ -6,11 +6,46 @@
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:local="clr-namespace:CodescoveryCaptureManager.App.Windows"
         mc:Ignorable="d"
-        Title="Select Capturable Windwos" Height="458" Width="800"  WindowStyle="SingleBorderWindow"
-        >
-    <DockPanel Background="#222222">
-        <Grid>
+        Title="Select Capturable Windows" MinHeight="404" Width="800"  WindowStyle="ToolWindow"
+        ResizeMode="NoResize" WindowStartupLocation="CenterScreen"
+>
+    <WindowChrome.WindowChrome>
+        <WindowChrome  >
 
-        </Grid>
-    </DockPanel>
+            <WindowChrome.ResizeBorderThickness>
+                
+                <Thickness>2</Thickness>
+            </WindowChrome.ResizeBorderThickness>
+        </WindowChrome>
+    </WindowChrome.WindowChrome>
+    
+    <Grid VerticalAlignment="Stretch"  Background="#222222">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="40"/>
+ 
+        </Grid.RowDefinitions>
+        <ScrollViewer Grid.Row="0" Grid.Column="1"   MinHeight="200">
+            <Grid  MinHeight="200" Name="AvailableCapturableWindows" Background="#222222"  HorizontalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="256"/>
+                    <ColumnDefinition Width="256"/>
+                    <ColumnDefinition Width="256"/>
+                </Grid.ColumnDefinitions>
+            </Grid>
+        </ScrollViewer>
+        <StackPanel HorizontalAlignment="Right" Grid.Row="1" Grid.Column="1" Orientation="Horizontal" ZIndex="9999" Height="40">
+            <Button Content="Cancel" Name="CancellButton" Click="CancellButton_MouseLeftButtonDown" Margin="5" />
+            <Button Content="Apply"  Name="Apply"  Click="Apply_MouseLeftButtonDown" Margin="5" />
+        </StackPanel>
+    </Grid>
+    
+    <!--<Menu doc>
+
+    </Menu>-->
 </Window>

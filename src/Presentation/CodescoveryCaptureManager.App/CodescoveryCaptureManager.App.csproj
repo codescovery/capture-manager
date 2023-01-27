@@ -20,20 +20,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Assets\icon.ico" />
+    <None Remove="Assets\icon.png" />
+    <None Remove="Assets\icon.svg" />
     <None Remove="Assets\menu.png" />
     <PackageReference Include="MaterialDesignThemes" Version="4.7.1" />
     <ProjectReference Include="..\..\Domain\CodescoveryCaptureManager.Domain\CodescoveryCaptureManager.Domain.csproj" />
-    <Resource Include="Assets\icon32.png">
-      <Pack>True</Pack>
-      <PackagePath></PackagePath>
-    </Resource>
   </ItemGroup>
 
-
   <ItemGroup>
-    <Resource Include="Assets\menu.png">
+    <Resource Include="Assets\icon.ico">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>
+    <Resource Include="Assets\icon.png" />
+    <Resource Include="Assets\icon.svg" />
   </ItemGroup>
 
 </Project>
