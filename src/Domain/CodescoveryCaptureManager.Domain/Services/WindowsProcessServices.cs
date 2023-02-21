@@ -17,8 +17,8 @@ namespace CodescoveryCaptureManager.Domain.Services
         {
         }
         private IReadOnlyList<string> IgnoredProcess()
-            => new List<string> { "applicationframehost", "shellexperiencehost", "systemsettings", "winstore.app", "searchui" }; 
-        public IReadOnlyList<CapturableWindow> GetOpenedWindows(System.Windows.Window ignoredWindow = null!)
+            => new List<string> { "applicationframehost", "shellexperiencehost", "systemsettings", "winstore.app", "searchui", "explorer" }; 
+        public IReadOnlyList<CapturableWindow> GetOpenedWindows(params System.Windows.Window[] ignoredWindows)
         {
             var capturableWindows = new List<CapturableWindow>();
             NativeMethods.EnumWindows((processHandle, lParam) =>
@@ -34,8 +34,9 @@ namespace CodescoveryCaptureManager.Domain.Services
                     return true;
 
                 // ignore Window
-                if (ignoredWindow != null)
-                    if (new WindowInteropHelper(ignoredWindow).Handle == processHandle)
+                var ignoredWindowsList = ignoredWindows?.ToList();
+                if (ignoredWindowsList != null && ignoredWindowsList.Any())
+                    if (ignoredWindowsList.Any(i=> new WindowInteropHelper(i).Handle == processHandle))
                         return true;
                 
 

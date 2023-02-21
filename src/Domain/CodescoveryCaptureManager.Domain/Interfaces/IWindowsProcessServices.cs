@@ -6,6 +6,6 @@ namespace CodescoveryCaptureManager.Domain.Interfaces
 {
     public interface IWindowsProcessServices:IDisposable
     {
-        IReadOnlyList<CapturableWindow> GetOpenedWindows(System.Windows.Window ignoredWindow = null!);
+        IReadOnlyList<CapturableWindow> GetOpenedWindows(params System.Windows.Window[] ignoredWindows);
     }
 }

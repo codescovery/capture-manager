@@ -18,10 +18,10 @@ namespace CodescoveryCaptureManager.Domain.Services
         private readonly SharpDX.Direct3D11.Device _d3dDevice;
         private readonly SharpDX.DXGI.SwapChain1 _swapChain;
 
-        public CaptureService(IDirect3DDevice d, GraphicsCaptureItem i)
+        public CaptureService(IDirect3DDevice device, GraphicsCaptureItem graphicsCaptureItem)
         {
-            _item = i;
-            _device = d;
+            _item = graphicsCaptureItem;
+            _device = device;
             _d3dDevice = Direct3D11Helper.CreateSharpDXDevice(_device);
 
             var factory = new SharpDX.DXGI.Factory2();
@@ -49,9 +49,9 @@ namespace CodescoveryCaptureManager.Domain.Services
                 _device,
                 DirectXPixelFormat.B8G8R8A8UIntNormalized,
                 2,
-                i.Size);
-            _session = _framePool.CreateCaptureSession(i);
-            _lastSize = i.Size;
+                graphicsCaptureItem.Size);
+            _session = _framePool.CreateCaptureSession(graphicsCaptureItem);
+            _lastSize = graphicsCaptureItem.Size;
 
             _framePool.FrameArrived += OnFrameArrived;
         }

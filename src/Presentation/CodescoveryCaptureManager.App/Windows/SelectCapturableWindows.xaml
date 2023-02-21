@@ -40,8 +40,8 @@
             </Grid>
         </ScrollViewer>
         <StackPanel HorizontalAlignment="Right" Grid.Row="1" Grid.Column="1" Orientation="Horizontal" ZIndex="9999" Height="40">
-            <Button Content="Cancel" Name="CancellButton" Click="CancellButton_MouseLeftButtonDown" Margin="5" />
-            <Button Content="Apply"  Name="Apply"  Click="Apply_MouseLeftButtonDown" Margin="5" />
+            <Button Content="Cancel" Name="CancellButton" Click="CancellButton_MouseLeftButtonDown" Margin="2" />
+            <Button Content="Apply"  Name="Apply"  Click="Apply_MouseLeftButtonDown" Margin="2" />
         </StackPanel>
     </Grid>
     

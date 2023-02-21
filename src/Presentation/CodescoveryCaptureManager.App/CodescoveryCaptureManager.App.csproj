@@ -25,6 +25,7 @@
     <None Remove="Assets\icon.svg" />
     <None Remove="Assets\menu.png" />
     <PackageReference Include="MaterialDesignThemes" Version="4.7.1" />
+    <PackageReference Include="System.Drawing.Common" Version="4.7.3" />
     <ProjectReference Include="..\..\Domain\CodescoveryCaptureManager.Domain\CodescoveryCaptureManager.Domain.csproj" />
   </ItemGroup>
 

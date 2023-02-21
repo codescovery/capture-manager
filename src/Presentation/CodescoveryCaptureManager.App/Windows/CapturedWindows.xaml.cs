@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Numerics;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -15,9 +13,7 @@ using CodescoveryCaptureManager.Domain.Helpers;
 using CodescoveryCaptureManager.Domain.Interfaces;
 using CodescoveryCaptureManager.Domain.Services;
 using CodescoveryCaptureManager.Domain.Structs;
-using CodescoveryCaptureManager.Domain.Extensions;
 using MaterialDesignThemes.Wpf;
-using Microsoft.Xaml.Behaviors.Core;
 using CompositionTarget = Windows.UI.Composition.CompositionTarget;
 using ContainerVisual = Windows.UI.Composition.ContainerVisual;
 
@@ -48,7 +44,7 @@ namespace CodescoveryCaptureManager.App.Windows
             _containerVisual = InitializeContainerVisual();
             _windowCaptureService = new WindowCaptureService(_compositor);
             _mainVirtualDesktop = GetMainVirtualDesktop();
-            HandleFooterMargin();
+            //HandleFooterMargin();
             SwitchMenuExpanderIcon();
             SetupEvents();
             StartCapturing();
@@ -122,6 +118,7 @@ namespace CodescoveryCaptureManager.App.Windows
             //CurrentWindowTitle.Text = Title;
             //CreateOpenedWindowsMenuItems(_windowsProcessServices.GetOpenedWindows(this));
             ConfigureVirtualDesktopActions();
+            CurrentWindowTitleOnTextChanged(this,null);
         }
 
         private void ConfigureVirtualDesktopActions()
@@ -137,67 +134,11 @@ namespace CodescoveryCaptureManager.App.Windows
                 MoveToVirtualDesktop.IsEnabled = true;
         }
 
-        public async void OpenCapturePicker(object sender, RoutedEventArgs e)
+        public  void OpenCapturePicker(object sender, RoutedEventArgs e)
         {
             var selectCapturableWindows = new SelectCapturableWindows(_windowsProcessServices, _capturableWindowsMonitoringService, _windowCaptureService);
-            selectCapturableWindows.Pick(this);
-            //Console.WriteLine("OpenCapturePicker");
-            //await Dispatcher.InvokeAsync(OpenCapturePicker);
-
+            selectCapturableWindows.Pick(  this);
         }
-
-        //private async void OpenCapturePicker()
-        //{
-        //    var picker = new GraphicsCapturePicker();
-        //    var windowHandle = this.GetHandler();
-        //    picker.SetWindow(windowHandle);
-        //    //var interop = (IInitializeWithWindow)(object)picker;
-        //    //interop.Initialize(windowHandle);
-        //    var item =  await picker.PickSingleItemAsync();
-        //    if (item == null) return;
-        //    var openedWindowMenuItem = new MenuItem
-        //    {
-        //        Header = item.DisplayName,
-        //        IsCheckable = true,
-        //        IsChecked = _capturableWindowsMonitoringService.IsMonitored(openedWindow.Handle),
-        //        StaysOpenOnClick = true
-        //    };
-        //    _windowCaptureService.StopCapture();
-
-        //    if (_capturableWindowsMonitoringService.IsMonitored(item.Handle))
-        //        //                _capturableWindowsMonitoringService.RemoveMonitoringWindow(openedWindow.Handle);
-        //        //            else
-        //        //                _capturableWindowsMonitoringService.AddMonitoringWindow(openedWindow);
-        //        //            _capturableWindowsMonitoringService.FocusFirstMonitoringWindow();
-        //        _windowCaptureService.StartCapture(item, windowHandle);
-        //}
-
-        //private void CreateOpenedWindowsMenuItems(IEnumerable<CapturableWindow> openedWindows)
-        //{
-
-        //    SelectCapturingWindow.Items.Clear();
-        //    SelectCapturingWindow.StaysOpenOnClick = true;
-        //    foreach (var openedWindow in openedWindows)
-        //    {
-        //        var openedWindowMenuItem = new MenuItem
-        //        {
-        //            Header = openedWindow.Name,
-        //            IsCheckable = true,
-        //            IsChecked = _capturableWindowsMonitoringService.IsMonitored(openedWindow.Handle),
-        //            StaysOpenOnClick = true
-        //        };
-        //        openedWindowMenuItem.Click += delegate (object sender, RoutedEventArgs args)
-        //        {
-        //            _windowCaptureService.StopCapture();
-        //            if (_capturableWindowsMonitoringService.IsMonitored(openedWindow.Handle))
-        //                _capturableWindowsMonitoringService.RemoveMonitoringWindow(openedWindow.Handle);
-        //            else
-        //                _capturableWindowsMonitoringService.AddMonitoringWindow(openedWindow);
-        //            _capturableWindowsMonitoringService.FocusFirstMonitoringWindow();
-        //        };
-        //        SelectCapturingWindow.Items.Add(openedWindowMenuItem);
-        //    }
-        //}
 
         public void Dispose()
         {
@@ -277,14 +218,14 @@ namespace CodescoveryCaptureManager.App.Windows
             MaximizeButton_OnClick(sender, e);
         }
 
-        private void CapturedWindows_OnStateChanged(object sender, EventArgs e)
-        {
-            HandleFooterMargin();
-        }
+        //private void CapturedWindows_OnStateChanged(object sender, EventArgs e)
+        //{
+        //    HandleFooterMargin();
+        //}
 
-        private void HandleFooterMargin()
-        {
-            FooterMenu.Margin = WindowState == WindowState.Maximized ? new Thickness(0, 0, 10, 50) : new Thickness(0, 0, 0, 0);
-        }
+        //private void HandleFooterMargin()
+        //{
+        //    FooterMenu.Margin = WindowState == WindowState.Maximized ? new Thickness(0, 0, 10, 50) : new Thickness(0, 0, 0, 0);
+        //}
     }
 }
