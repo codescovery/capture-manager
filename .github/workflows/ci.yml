@@ -17,3 +17,5 @@ jobs:
         run: dotnet restore src/Codescovery.CaptureManager.sln
       - name: Build
         run: dotnet build src/Codescovery.CaptureManager.sln --configuration Release --no-restore
+      - name: Test
+        run: dotnet test src/Codescovery.CaptureManager.sln --configuration Release --no-build

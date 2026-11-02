@@ -90,7 +90,8 @@ namespace CodescoveryCaptureManager.Domain.Services
             {
                 Handle = processHandle,
                 Name = $"{title} ({process.ProcessName}.exe)",
-                Process = process
+                Process = process,
+                ProcessName = process.ProcessName
             });
         }
 

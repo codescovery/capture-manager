@@ -20,4 +20,8 @@
     <Folder Include="Constants\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="CodescoveryCaptureManager.Domain.Tests" />
+  </ItemGroup>
+
 </Project>
