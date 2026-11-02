@@ -78,11 +78,11 @@ export function App() {
   );
 
   return (
-    <div className="app" data-output-only={outputOnly}>
+    <div className="app" data-output-only={outputOnly} data-floating={floating.isOpen}>
       {!outputOnly && <Header />}
       <main>
         <Stage video={view.shownId === null ? undefined : videoOf(view.shownId)} notice={view.notice} />
-        {!outputOnly && <aside>{floating.isOpen ? <FloatingNote /> : panel}</aside>}
+        {!outputOnly && !floating.isOpen && <aside>{panel}</aside>}
       </main>
       {outputOnly && (
         <button type="button" className="exit-output" onClick={() => setOutputOnly(false)}>Exit output only (Esc)</button>
@@ -100,10 +100,6 @@ function Header() {
       <p className="muted">Share <b>this tab</b>. Use “Output only” so thumbnails of other windows never go on air.</p>
     </header>
   );
-}
-
-function FloatingNote() {
-  return <p className="muted">Controls are in the floating window.</p>;
 }
 
 interface ViewInput {

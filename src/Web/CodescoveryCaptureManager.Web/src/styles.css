@@ -58,6 +58,7 @@ header {
 header .muted { margin-left: auto; }
 
 main { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; padding: 16px; min-height: 0; }
+.app[data-floating='true'] main { grid-template-columns: 1fr; }
 .app[data-output-only='true'] main { grid-template-columns: 1fr; padding: 0; }
 
 .stage {
