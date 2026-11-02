@@ -33,6 +33,17 @@
                             ToolTip="Choose windows to share">
                         <materialDesign:PackIcon Kind="MonitorShare" Width="20" Height="20" />
                     </Button>
+                    <Button Name="ProfilesButton" Style="{StaticResource MaterialDesignFlatButton}" Foreground="White"
+                            Height="34" Padding="10,0" Click="ProfilesButton_OnClick" ToolTip="Profiles">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="FormatListBulleted" Width="18" Height="18" VerticalAlignment="Center" />
+                            <TextBlock Name="ProfileLabel" Text="Profiles" Margin="8,0,0,0" VerticalAlignment="Center"
+                                       MaxWidth="160" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                        <Button.ContextMenu>
+                            <ContextMenu Name="ProfilesMenu" Opened="ProfilesMenu_OnOpened" />
+                        </Button.ContextMenu>
+                    </Button>
                     <Button Name="SettingsButton" Style="{StaticResource ToolbarButton}" ToolTip="Settings"
                             Click="SettingsButton_OnClick">
                         <materialDesign:PackIcon Kind="Cog" Width="18" Height="18" />

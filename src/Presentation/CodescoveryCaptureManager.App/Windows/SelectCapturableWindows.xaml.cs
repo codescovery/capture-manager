@@ -9,6 +9,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using CodescoveryCaptureManager.App.Helpers;
 using CodescoveryCaptureManager.Domain.Interfaces;
+using CodescoveryCaptureManager.Domain.Profiles;
 using CodescoveryCaptureManager.Domain.Services;
 
 namespace CodescoveryCaptureManager.App.Windows
@@ -24,14 +25,17 @@ namespace CodescoveryCaptureManager.App.Windows
         private readonly IWindowsProcessServices _windowsProcessServices;
         private readonly ICapturableWindowsMonitoringService _capturableWindowsMonitoringService;
         private readonly WindowCaptureService _windowCaptureService;
+        private readonly IProfileService _profileService;
         private readonly CancellationTokenSource _closing = new();
         private List<WindowPickerItem> _items = new();
         private ICollectionView _view;
 
         public SelectCapturableWindows(IWindowsProcessServices windowsProcessServices,
             ICapturableWindowsMonitoringService capturableWindowsMonitoringService,
-            WindowCaptureService windowCaptureService)
+            WindowCaptureService windowCaptureService,
+            IProfileService profileService)
         {
+            _profileService = profileService;
             _windowsProcessServices = windowsProcessServices;
             _capturableWindowsMonitoringService = capturableWindowsMonitoringService;
             _windowCaptureService = windowCaptureService;
@@ -125,6 +129,21 @@ namespace CodescoveryCaptureManager.App.Windows
 
         private void Clear_OnClick(object sender, RoutedEventArgs e) => SetVisibleSelection(false);
 
+        // Saves the current card selection (applied or not) as a profile; the selection itself is untouched.
+        private void SaveAsProfile_OnClick(object sender, RoutedEventArgs e)
+        {
+            var selectedWindows = _items.Where(item => item.IsSelected).Select(item => item.Window).ToList();
+            if (selectedWindows.Count == 0)
+            {
+                SelectionSummary.Text = "Select at least one window to save a profile.";
+                return;
+            }
+
+            var profile = SaveProfileDialog.Prompt(this, string.Empty, WindowRuleFactory.FromWindows(selectedWindows));
+            if (profile != null)
+                _profileService.Save(profile, makeActive: false);
+        }
+
         private void Cancel_OnClick(object sender, RoutedEventArgs e) => Close();
 
         private void Apply_OnClick(object sender, RoutedEventArgs e)
@@ -140,6 +159,8 @@ namespace CodescoveryCaptureManager.App.Windows
 
             foreach (var item in changedItems)
                 ApplyItem(item);
+
+            _profileService.ClearActive();
 
             _windowCaptureService.StopCapture();
             _capturableWindowsMonitoringService.SyncWithForegroundWindow();
@@ -168,15 +189,10 @@ namespace CodescoveryCaptureManager.App.Windows
             }
         }
 
-        [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
-        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
-
-        // The window is dark; ask DWM for a dark title bar (DWMWA_USE_IMMERSIVE_DARK_MODE = 20).
         protected override void OnSourceInitialized(EventArgs e)
         {
             base.OnSourceInitialized(e);
-            var useDarkMode = 1;
-            DwmSetWindowAttribute(new System.Windows.Interop.WindowInteropHelper(this).Handle, 20, ref useDarkMode, sizeof(int));
+            DarkTitleBar.Apply(this);
         }
 
         protected override void OnClosed(EventArgs e)

@@ -143,6 +143,9 @@
                         Click="SelectAll_OnClick" />
                 <Button Content="Clear" Style="{StaticResource MaterialDesignFlatButton}"
                         Click="Clear_OnClick" />
+                <Button Content="Save as profile..." Style="{StaticResource MaterialDesignFlatButton}"
+                        Click="SaveAsProfile_OnClick"
+                        ToolTip="Save the selected windows as a reusable profile" />
             </StackPanel>
             <TextBlock Grid.Column="1" Name="SelectionSummary" HorizontalAlignment="Center"
                        VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" />

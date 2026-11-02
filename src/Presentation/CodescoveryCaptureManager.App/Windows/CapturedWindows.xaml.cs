@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Numerics;
@@ -12,6 +13,7 @@ using Windows.UI.Composition;
 using WindowsDesktop;
 using CodescoveryCaptureManager.Domain.Helpers;
 using CodescoveryCaptureManager.Domain.Interfaces;
+using CodescoveryCaptureManager.Domain.Profiles;
 using CodescoveryCaptureManager.Domain.Services;
 using CodescoveryCaptureManager.Domain.Structs;
 using MaterialDesignThemes.Wpf;
@@ -41,13 +43,20 @@ namespace CodescoveryCaptureManager.App.Windows
 
         private enum FocusFallbackMode { Message, KeepLast, FixedWindow }
 
-        public CapturedWindows(ICapturableWindowsMonitoringService capturableWindowsMonitoringService, IWindowsProcessServices windowsProcessServices, IFocusBridge focusBridge)
+        private readonly IProfileService _profileService;
+
+        public CapturedWindows(ICapturableWindowsMonitoringService capturableWindowsMonitoringService, IWindowsProcessServices windowsProcessServices, IFocusBridge focusBridge, IProfileService profileService)
         {
 
             InitializeComponent();
             _capturableWindowsMonitoringService = capturableWindowsMonitoringService;
             _windowsProcessServices = windowsProcessServices;
             _focusBridge = focusBridge;
+            _profileService = profileService;
+            _fallbackMode = Enum.TryParse<FocusFallbackMode>(_profileService.Settings.FallbackMode, out var savedMode) && savedMode != FocusFallbackMode.FixedWindow
+                ? savedMode
+                : FocusFallbackMode.Message;
+            _profileService.Changed += UpdateProfileLabel;
             _focusBridge.Start();
             _compositor = new Compositor();
             _containerVisual = InitializeContainerVisual();
@@ -132,6 +141,9 @@ namespace CodescoveryCaptureManager.App.Windows
         {
             _fallbackMode = mode;
             _fallbackWindowHandle = fixedWindowHandle;
+            // A fixed window is a live handle: not persisted, the saved mode stays as it was.
+            if (mode != FocusFallbackMode.FixedWindow)
+                _profileService.UpdateSettings(settings => settings with { FallbackMode = mode.ToString() });
             if (_capturableWindowsMonitoringService.IsBlurred)
                 OnMonitoredWindowsBlurred();
         }
@@ -180,6 +192,107 @@ namespace CodescoveryCaptureManager.App.Windows
             EmptyState.Visibility = hasMonitoredWindows ? Visibility.Collapsed : Visibility.Visible;
             NoFocusState.Visibility = hasMonitoredWindows && !isShowingWindow ? Visibility.Visible : Visibility.Collapsed;
         }
+
+        private void ProfilesButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            ProfilesButton.ContextMenu.PlacementTarget = ProfilesButton;
+            ProfilesButton.ContextMenu.IsOpen = true;
+        }
+
+        // Rebuilt on every open so it always reflects the saved profiles.
+        private void ProfilesMenu_OnOpened(object sender, RoutedEventArgs e)
+        {
+            ProfilesMenu.Items.Clear();
+            var profiles = _profileService.Profiles;
+            if (profiles.Count == 0)
+                ProfilesMenu.Items.Add(new MenuItem { Header = "No saved profiles", IsEnabled = false });
+
+            foreach (var profile in profiles)
+                ProfilesMenu.Items.Add(CreateProfileItem(profile));
+
+            ProfilesMenu.Items.Add(new Separator());
+            ProfilesMenu.Items.Add(CreateSaveCurrentItem());
+            ProfilesMenu.Items.Add(CreateDeleteMenu(profiles));
+        }
+
+        private MenuItem CreateProfileItem(CaptureProfile profile)
+        {
+            var item = new MenuItem
+            {
+                Header = profile.Name,
+                IsCheckable = true,
+                IsChecked = _profileService.Active?.Id == profile.Id,
+                ToolTip = DescribeRules(profile),
+            };
+            item.Click += (_, _) => ApplyProfile(profile.Id);
+            return item;
+        }
+
+        private MenuItem CreateSaveCurrentItem()
+        {
+            var item = new MenuItem
+            {
+                Header = "Save current windows as profile...",
+                IsEnabled = _capturableWindowsMonitoringService.HasMonitoredWindows(),
+            };
+            item.Click += (_, _) => SaveCurrentWindowsAsProfile();
+            return item;
+        }
+
+        private MenuItem CreateDeleteMenu(IReadOnlyList<CaptureProfile> profiles)
+        {
+            var deleteMenu = new MenuItem { Header = "Delete profile", IsEnabled = profiles.Count > 0 };
+            foreach (var profile in profiles)
+            {
+                var item = new MenuItem { Header = profile.Name };
+                item.Click += (_, _) => ConfirmAndDelete(profile);
+                deleteMenu.Items.Add(item);
+            }
+            return deleteMenu;
+        }
+
+        private static string DescribeRules(CaptureProfile profile)
+            => string.Join(Environment.NewLine, profile.Rules.Select(rule =>
+                rule.TitleMatch == TitleMatchMode.Any ? rule.ProcessName : $"{rule.ProcessName}: {rule.TitleMatch} \"{rule.TitlePattern}\""));
+
+        private void ApplyProfile(Guid profileId)
+        {
+            try
+            {
+                var result = _profileService.Apply(profileId);
+                _windowCaptureService?.StopCapture();
+                _capturableWindowsMonitoringService.SyncWithForegroundWindow();
+                UpdateEmptyState();
+                ProfilesButton.ToolTip = DescribeApplyResult(result);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Could not apply profile. {ex.Message}");
+            }
+        }
+
+        private static string DescribeApplyResult(ProfileApplyResult result)
+            => result.WaitingRules.Count == 0
+                ? $"{result.BoundWindows} window(s) bound."
+                : $"{result.BoundWindows} window(s) bound; waiting for: {string.Join(", ", result.WaitingRules.Select(rule => rule.ProcessName))}.";
+
+        private void SaveCurrentWindowsAsProfile()
+        {
+            var rules = WindowRuleFactory.FromWindows(_capturableWindowsMonitoringService.GetMonitoredWindows());
+            var profile = SaveProfileDialog.Prompt(this, string.Empty, rules);
+            if (profile != null)
+                _profileService.Save(profile, makeActive: true);
+        }
+
+        private void ConfirmAndDelete(CaptureProfile profile)
+        {
+            var answer = MessageBox.Show(this, $"Delete profile \"{profile.Name}\"?", "Delete profile", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (answer == MessageBoxResult.Yes)
+                _profileService.Delete(profile.Id);
+        }
+
+        private void UpdateProfileLabel()
+            => ProfileLabel.Text = _profileService.Active?.Name ?? "Profiles";
 
         private void OnPickerClosed()
         {
@@ -266,7 +379,7 @@ namespace CodescoveryCaptureManager.App.Windows
 
         public  void OpenCapturePicker(object sender, RoutedEventArgs e)
         {
-            var selectCapturableWindows = new SelectCapturableWindows(_windowsProcessServices, _capturableWindowsMonitoringService, _windowCaptureService);
+            var selectCapturableWindows = new SelectCapturableWindows(_windowsProcessServices, _capturableWindowsMonitoringService, _windowCaptureService, _profileService);
             selectCapturableWindows.Closed += (_, _) => OnPickerClosed();
             selectCapturableWindows.Pick(this);
         }
@@ -284,6 +397,9 @@ namespace CodescoveryCaptureManager.App.Windows
             _compositionTarget = InitializeDesktopWindowTarget();
             _compositionTarget.Root = _containerVisual;
             _containerVisual.Children.InsertAtTop(_windowCaptureService.GetVisual());
+            UpdateProfileLabel();
+            if (_profileService.Active != null)
+                ApplyProfile(_profileService.Active.Id);
             UpdateEmptyState();
         }
         private CompositionTarget InitializeDesktopWindowTarget()

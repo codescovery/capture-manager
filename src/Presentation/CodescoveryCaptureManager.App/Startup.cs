@@ -25,6 +25,7 @@ namespace CodescoveryCaptureManager.App
             services.AddCapturableWindowsMonitoringService();
             services.AddWindowsProcessServices();
             services.AddFocusBridge();
+            services.AddProfiles();
             services.AddTransient<CapturedWindows>();
             //_services.AddSingleton<IconTrayController>();
             return services;
