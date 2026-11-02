@@ -1,38 +1,30 @@
-import { useEffect, useRef } from 'react';
-import { subscribeFrames } from '../lib/frameClock';
+import type { RefObject } from 'react';
 
-export type StageNotice = 'empty' | 'no-focus' | 'unmatched' | 'paused';
+export type StageNotice = 'connecting' | 'offline' | 'no-focus' | 'waiting' | 'unsupported';
 
 const NOTICES: Record<StageNotice, { title: string; text: string }> = {
-  empty: {
-    title: 'Add a window to start',
-    text: 'Pick the windows you want to expose. Then share this tab (or use Output only) in Teams, Meet or OBS.',
+  connecting: { title: 'Connecting to the desktop app…', text: 'Looking for Capture Manager on this computer.' },
+  offline: {
+    title: 'Capture Manager is not running',
+    text: 'Start the desktop app, then pick the windows you want to expose. This page reconnects by itself.',
   },
   'no-focus': {
     title: 'No selected window is focused',
-    text: 'Focus one of your selected windows to show it here.',
+    text: 'Focus one of the windows you picked in Capture Manager to show it here.',
   },
-  unmatched: {
-    title: 'Focused window is not added here',
-    text: 'The window in focus is not one of the sources in this browser. Nothing is shown.',
+  waiting: { title: 'Waiting for video…', text: 'The focused window is about to appear.' },
+  unsupported: {
+    title: 'This browser cannot decode the stream',
+    text: 'Use a recent Chrome or Edge on desktop (WebCodecs is required).',
   },
-  paused: { title: 'Nothing selected', text: 'Choose a source to show.' },
 };
 
 interface StageProps {
-  video: HTMLVideoElement | undefined;
+  canvasRef: RefObject<HTMLCanvasElement>;
   notice: StageNotice | null;
 }
 
-export function Stage({ video, notice }: StageProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    return subscribeFrames(() => drawFrame(canvas, video));
-  }, [video]);
-
+export function Stage({ canvasRef, notice }: StageProps) {
   return (
     <div className="stage" data-blank={notice !== null}>
       <canvas ref={canvasRef} width={1280} height={720} />
@@ -50,18 +42,4 @@ function StageMessage({ notice }: { notice: StageNotice }) {
       <p>{text}</p>
     </div>
   );
-}
-
-function drawFrame(canvas: HTMLCanvasElement, video: HTMLVideoElement | undefined): void {
-  const context = canvas.getContext('2d');
-  if (!context) return;
-  if (!video || !video.videoWidth) {
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    return;
-  }
-  if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-  }
-  context.drawImage(video, 0, 0, canvas.width, canvas.height);
 }
