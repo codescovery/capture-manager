@@ -7,7 +7,10 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using PixelFormat = System.Drawing.Imaging.PixelFormat;
+using CodescoveryCaptureManager.Domain.Helpers;
 using CodescoveryCaptureManager.Domain.Interop;
 
 namespace CodescoveryCaptureManager.App.Helpers
@@ -24,8 +27,29 @@ namespace CodescoveryCaptureManager.App.Helpers
         [DllImport("user32.dll")]
         private static extern bool IsIconic(IntPtr hWnd);
 
-        public static Task<BitmapSource> CaptureThumbnailAsync(IntPtr windowHandle)
-            => Task.Run(() => CaptureThumbnail(windowHandle));
+        public static bool IsMinimized(IntPtr windowHandle) => IsIconic(windowHandle);
+
+        /// <summary>PrintWindow first; Graphics Capture for windows it cannot render (e.g. Windows Terminal).</summary>
+        public static async Task<BitmapSource> CaptureThumbnailAsync(IntPtr windowHandle)
+        {
+            if (IsIconic(windowHandle)) return null;
+
+            var printed = await Task.Run(() => CaptureThumbnail(windowHandle));
+            if (printed != null) return printed;
+
+            var snapshot = await WindowSnapshotHelper.TryCaptureAsync(windowHandle);
+            return snapshot == null ? null : await Task.Run(() => ToThumbnail(snapshot));
+        }
+
+        private static BitmapSource ToThumbnail(WindowSnapshot snapshot)
+        {
+            BitmapSource source = BitmapSource.Create(
+                snapshot.Width, snapshot.Height, 96, 96, System.Windows.Media.PixelFormats.Bgr32, null, snapshot.Bgra, snapshot.Stride);
+            if (snapshot.Width > ThumbnailWidth)
+                source = new TransformedBitmap(source, new ScaleTransform((double)ThumbnailWidth / snapshot.Width, (double)ThumbnailWidth / snapshot.Width));
+            source.Freeze();
+            return source;
+        }
 
         public static Task<BitmapSource> LoadIconAsync(Process process)
             => Task.Run(() => LoadIcon(process));

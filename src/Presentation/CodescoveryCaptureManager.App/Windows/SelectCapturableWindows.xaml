@@ -14,7 +14,7 @@
     <Window.Resources>
         <SolidColorBrush x:Key="CardBrush" Color="#2A2A2A" />
         <SolidColorBrush x:Key="CardHoverBrush" Color="#333333" />
-        <SolidColorBrush x:Key="AccentBrush" Color="#9575CD" />
+        <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource BrandColor}" />
         <SolidColorBrush x:Key="MutedBrush" Color="#A3A3A3" />
         <SolidColorBrush x:Key="ThumbnailBackdropBrush" Color="#141414" />
         <BooleanToVisibilityConverter x:Key="BooleanToVisibility" />
@@ -36,11 +36,9 @@
                         <Grid>
                             <Image Source="{Binding Thumbnail}" Stretch="Uniform"
                                    RenderOptions.BitmapScalingMode="HighQuality" />
-                            <materialDesign:PackIcon Kind="WindowRestore" Width="36" Height="36"
-                                                     HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                     Foreground="#555555">
-                                <materialDesign:PackIcon.Style>
-                                    <Style TargetType="materialDesign:PackIcon">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
                                         <Setter Property="Visibility" Value="Collapsed" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding Thumbnail}" Value="{x:Null}">
@@ -48,8 +46,13 @@
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
-                                </materialDesign:PackIcon.Style>
-                            </materialDesign:PackIcon>
+                                </StackPanel.Style>
+                                <materialDesign:PackIcon Kind="WindowRestore" Width="32" Height="32"
+                                                         HorizontalAlignment="Center" Foreground="#555555" />
+                                <TextBlock Text="Minimized - restore it to preview" FontSize="11" Margin="0,6,0,0"
+                                           Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"
+                                           Visibility="{Binding IsMinimized, Converter={StaticResource BooleanToVisibility}}" />
+                            </StackPanel>
 
                             <Border Width="24" Height="24" CornerRadius="12" Margin="8"
                                     HorizontalAlignment="Right" VerticalAlignment="Top"
@@ -57,7 +60,7 @@
                                     Visibility="{Binding IsSelected, Converter={StaticResource BooleanToVisibility}}">
                                 <materialDesign:PackIcon Kind="Check" Width="16" Height="16"
                                                          HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                         Foreground="White" />
+                                                         Foreground="{StaticResource BrandForegroundBrush}" />
                             </Border>
                         </Grid>
                     </Border>

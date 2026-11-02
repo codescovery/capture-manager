@@ -13,6 +13,7 @@ namespace CodescoveryCaptureManager.App.Windows
         private BitmapSource _thumbnail;
         private BitmapSource _icon;
         private bool _isLoadingThumbnail = true;
+        private bool _isMinimized;
 
         public WindowPickerItem(CapturableWindow window, bool wasMonitored)
         {
@@ -46,6 +47,12 @@ namespace CodescoveryCaptureManager.App.Windows
         {
             get => _icon;
             set => Set(ref _icon, value);
+        }
+
+        public bool IsMinimized
+        {
+            get => _isMinimized;
+            set => Set(ref _isMinimized, value);
         }
 
         public bool IsLoadingThumbnail
