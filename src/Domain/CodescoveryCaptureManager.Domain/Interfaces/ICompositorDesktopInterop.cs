@@ -9,9 +9,8 @@ namespace CodescoveryCaptureManager.Domain.Interfaces
     [ComVisible(true)]
     public interface ICompositorDesktopInterop
     {
-        Windows.UI.Composition.Desktop.DesktopWindowTarget CreateDesktopWindowTarget(
+        IntPtr CreateDesktopWindowTarget(
             IntPtr hwnd,
-            bool isTopmost);
+            [MarshalAs(UnmanagedType.Bool)] bool isTopmost);
     }
-
 }

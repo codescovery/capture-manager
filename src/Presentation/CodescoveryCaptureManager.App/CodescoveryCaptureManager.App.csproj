@@ -1,8 +1,8 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <UseWPF>true</UseWPF>
     <ApplicationManifest>app.manifest</ApplicationManifest>
 	  <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
@@ -24,9 +24,15 @@
     <None Remove="Assets\icon.png" />
     <None Remove="Assets\icon.svg" />
     <None Remove="Assets\menu.png" />
-    <PackageReference Include="MaterialDesignThemes" Version="4.7.1" />
-    <PackageReference Include="System.Drawing.Common" Version="4.7.3" />
+    <PackageReference Include="MaterialDesignThemes" Version="5.2.1" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.0" />
+    <PackageReference Include="Velopack" Version="1.2.161" />
     <ProjectReference Include="..\..\Domain\CodescoveryCaptureManager.Domain\CodescoveryCaptureManager.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ApplicationDefinition Remove="App.xaml" />
+    <Page Include="App.xaml" />
   </ItemGroup>
 
   <ItemGroup>

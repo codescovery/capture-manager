@@ -19,27 +19,15 @@ using System;
 using System.Windows.Media.Imaging;
 using System.Diagnostics;
 using System.Windows.Controls;
-using Windows.Media.AppRecording;
-using Windows.Storage;
 using CodescoveryCaptureManager.Domain.Helpers;
 using System.Windows.Interop;
 using CodescoveryCaptureManager.Domain.Interop;
 using PixelFormat = System.Drawing.Imaging.PixelFormat;
 using Point = System.Drawing.Point;
 using Size = System.Windows.Size;
-using SharpDX.Direct3D11;
-using SharpDX.DXGI;
 using System.Runtime.InteropServices;
-using SharpDX;
-using Color = Windows.UI.Color;
-using Device = SharpDX.Direct3D11.Device;
-using SharpDX.Win32;
 using System.IO;
 using System.Linq;
-using System.Windows.Media.Media3D;
-using Windows.System;
-using SharpDX.Multimedia;
-using Windows.UI.Xaml.Media;
 using Stretch = System.Windows.Media.Stretch;
 
 //using TextBlock = Windows.UI.Xaml.Controls.TextBlock;
@@ -76,8 +64,8 @@ namespace CodescoveryCaptureManager.App.Windows
 
         public void Pick(params Window[] ignoredWindows)
         {
-            var ignoredWindowsWithMe = ignoredWindows?.Append(this)?.ToArray() ?? new Window[]{this};
-             
+            var ignoredWindowsWithMe = ignoredWindows?.Append(this)?.ToArray() ?? new Window[] { this };
+
             CreateOpenedWindowsMenuItems(_windowsProcessServices.GetOpenedWindows(ignoredWindowsWithMe));
             Show();
         }
@@ -154,8 +142,8 @@ namespace CodescoveryCaptureManager.App.Windows
         private UIElement CreatePreviewImage(IntPtr hWnd)
         {
             var grid = new Grid();
-            
-            grid.RowDefinitions.Add(new RowDefinition{Height = GridLength.Auto});
+
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
@@ -175,8 +163,8 @@ namespace CodescoveryCaptureManager.App.Windows
                 Height = 108,
                 Stretch = Stretch.UniformToFill
             };
-            
-            Grid.SetRow(image,1);
+
+            Grid.SetRow(image, 1);
             grid.Children.Add(image);
             return grid;
         }

@@ -27,17 +27,14 @@ namespace CodescoveryCaptureManager.Domain.Helpers
             var hr = NativeMethods.CreateDirect3D11DeviceFromDXGIDevice(device3.NativePointer, out var pUnknown);
 
             if (hr != 0) return null;
-            var device = Marshal.GetObjectForIUnknown(pUnknown) as IDirect3DDevice;
-            Marshal.Release(pUnknown);
-
-            return device;
+            return WinRtInteropHelper.FromPointer<IDirect3DDevice>(pUnknown);
         }
 
 
         public static SharpDX.Direct3D11.Device CreateSharpDXDevice(IDirect3DDevice device)
         {
-            var access = (IDirect3DDxgiInterfaceAccess)device;
-            var d3dPointer = access.GetInterface(ID3D11Device);
+            var access = WinRtInteropHelper.AsComInterface<IDirect3DDxgiInterfaceAccess>(device);
+            var d3dPointer = access.GetInterface(ref ID3D11Device);
             var d3dDevice = new SharpDX.Direct3D11.Device(d3dPointer);
 
             return d3dDevice;
@@ -45,8 +42,8 @@ namespace CodescoveryCaptureManager.Domain.Helpers
 
         public static SharpDX.Direct3D11.Texture2D CreateSharpDXTexture2D(IDirect3DSurface surface)
         {
-            var access = (IDirect3DDxgiInterfaceAccess)surface;
-            var d3dPointer = access.GetInterface(ID3D11Texture2D);
+            var access = WinRtInteropHelper.AsComInterface<IDirect3DDxgiInterfaceAccess>(surface);
+            var d3dPointer = access.GetInterface(ref ID3D11Texture2D);
             var d3dSurface = new SharpDX.Direct3D11.Texture2D(d3dPointer);
             return d3dSurface;
         }

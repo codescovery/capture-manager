@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Windows;
 using Windows.System;
+using CodescoveryCaptureManager.App.Updates;
 using CodescoveryCaptureManager.App.Windows;
 using CodescoveryCaptureManager.Domain.Helpers;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,6 +33,7 @@ namespace CodescoveryCaptureManager.App
             //if (OperatingSystemHelper.IsWindows())
             //    _iconTrayController.Configure(mainWindow);
             mainWindow?.Show();
+            _ = new UpdateService().StageUpdateAsync();
         }
         public void Dispose()
         {

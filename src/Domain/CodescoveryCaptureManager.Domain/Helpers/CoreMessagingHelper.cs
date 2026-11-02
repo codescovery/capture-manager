@@ -20,10 +20,7 @@ namespace CodescoveryCaptureManager.Domain.Helpers
             var hr = NativeMethods.CreateDispatcherQueueController(options, out var controllerPointer);
             if (hr != 0) return null;
 
-            var controller = Marshal.GetObjectForIUnknown(controllerPointer) as DispatcherQueueController;
-            Marshal.Release(controllerPointer);
-
-            return controller;
+            return WinRtInteropHelper.FromPointer<DispatcherQueueController>(controllerPointer);
         }
     }
 }
