@@ -26,15 +26,16 @@ CapturedWindows (main window, Windows/CapturedWindows.xaml[.cs])
    ├─ ctor → StartCapturing() → ICapturableWindowsMonitoringService.StartMonitoring() (fire-and-forget async loop)
    ├─ subscribes MonitoredWindowFocused → CreateItemForWindow(hwnd) → WindowCaptureService.StartCapture
    ├─ toolbar (Border, not Menu): editable title, picker, settings ContextMenu (virtual desktop), hide-toolbar, min/max/close; drag on toolbar background or capture area
-   ├─ EmptyState overlay ("Choose windows") shown while `HasMonitoredWindows()` is false; refreshed on load, picker close, window closed
+   ├─ settings ContextMenu → "When no selected window is focused": *Show a message* (default) / *Keep the last window* / *Always show: <picked window>* (list rebuilt on open from `GetMonitoredWindows()`). Chosen in `_fallbackMode`; applied on `MonitoredWindowsBlurred` (`ApplyFocusFallback`) and immediately if already blurred (`IsBlurred`). A closed fixed window falls back to message. Not persisted across restarts
+   ├─ EmptyState overlay ("Choose windows") shown while `HasMonitoredWindows()` is false; NoFocusState overlay ("No selected window is focused") shown when windows are picked but nothing is being captured (blurred/closed). Both refreshed via `UpdateEmptyState()` on load, picker close, window closed, blurred, capture start
    └─ OpenCapturePicker → new SelectCapturableWindows(...).Pick(this)
 
 SelectCapturableWindows (picker, Windows/SelectCapturableWindows.xaml[.cs])
    ├─ resizable, owner = main window; header + search box, WrapPanel of cards (ItemsControl + DataTemplate), footer (Select all / Clear / count / Cancel / Apply)
    ├─ IWindowsProcessServices.GetOpenedWindows(ignore self + main) → `WindowPickerItem` (INotifyPropertyChanged: title, process, icon, thumbnail, IsSelected); monitored first, then by title
-   ├─ `Helpers/WindowThumbnailProvider`: per-window thumbnail via `PrintWindow(PW_RENDERFULLCONTENT)` + app icon, on thread pool (max 4 parallel), frozen BitmapSource, cancelled on close; minimized/failed → placeholder icon
+   ├─ `Helpers/WindowThumbnailProvider`: per-window thumbnail via `PrintWindow(PW_RENDERFULLCONTENT)` + app icon, on thread pool (max 4 parallel), frozen BitmapSource, cancelled on close. If PrintWindow fails (Windows Terminal) falls back to one Graphics Capture frame (`Domain/Helpers/WindowSnapshotHelper`); minimized windows (no frame possible) show a "Minimized" placeholder. Brand green `#8DC63F` (from `Assets/icon.svg`) overrides the theme primary in `App.xaml` (`BrandBrush`, `PrimaryHueMidBrush`)
    ├─ selection starts = currently monitored set; search filters via ICollectionView; Select all/Clear act on visible cards
-   └─ Apply (enabled only if something changed, Ctrl+Enter): add newly selected, remove deselected, one StopCapture + FocusFirstMonitoringWindow. Ctrl+F focuses search
+   └─ Apply (enabled only if something changed, Ctrl+Enter): add newly selected, remove deselected, one StopCapture + SyncWithForegroundWindow (shows a window only if it is really the foreground one). Ctrl+F focuses search
 
 Domain/Services
    ├─ FocusBridgeService (internal, IFocusBridge): loopback WebSocket server publishing the focused picked window title to browser pages (see web-prototype.md)
@@ -48,9 +49,9 @@ Domain/Services
 
 **Startup**: `App()` → `Startup` (DI) + DispatcherQueueController → `App_OnStartup` resolves `CapturedWindows` → `Show()`. Ctor starts monitoring (nothing monitored yet, loop idles).
 
-**Pick windows**: menu → `OpenCapturePicker` → picker enumerates windows (ignores `applicationframehost, shellexperiencehost, systemsettings, winstore.app, searchui, explorer`, hidden, untitled, self) → click card toggles `IsSelected` → Apply: diff selection vs monitored set (add/remove), then StopCapture + FocusFirstMonitoringWindow once.
+**Pick windows**: menu → `OpenCapturePicker` → picker enumerates windows (ignores `applicationframehost, shellexperiencehost, systemsettings, winstore.app, searchui, explorer`, hidden, untitled, self) → click card toggles `IsSelected` → Apply: diff selection vs monitored set (add/remove), then StopCapture + SyncWithForegroundWindow once.
 
-**Focus-follow loop** (`StartMonitoring`): every `CapturableWindowDefaultValues.RefreshRate` (10 ms) `Task.Delay` → `NativeMethods.GetActiveWindow()` (wraps `GetForegroundWindow`) → if foreground HWND is monitored → raise `MonitoredWindowFocused`. Each tick first prunes HWNDs failing `IsWindow` (raises `MonitoredWindowClosed`; UI stops capture if it was showing that window) and is wrapped in try/catch. UI handler skips if already capturing that HWND, else starts new capture (stops previous). Switching to a non-monitored window leaves last capture displayed.
+**Focus-follow loop** (`StartMonitoring`): every `CapturableWindowDefaultValues.RefreshRate` (10 ms) `Task.Delay` → `NativeMethods.GetActiveWindow()` (wraps `GetForegroundWindow`) → if foreground HWND is monitored → raise `MonitoredWindowFocused`. Each tick first prunes HWNDs failing `IsWindow` (raises `MonitoredWindowClosed`; UI stops capture if it was showing that window) and is wrapped in try/catch. UI handler skips if already capturing that HWND, else starts new capture (stops previous). If foreground is a window of **another process** that is not monitored, the service raises `MonitoredWindowsBlurred` once and the UI calls `StopCapture` → the view goes blank (nothing leaks). Foreground in **this app** (picker, capture window, toolbar) is neutral: last view stays. `SyncWithForegroundWindow` (after Apply) raises focus only if a monitored window is the real foreground window; otherwise nothing is shown (never show an unfocused window).
 
 **Capture**: `CaptureHelper.CreateItemForWindow(hwnd)` (IGraphicsCaptureItemInterop) → `CaptureService` creates SharpDX device from WinRT IDirect3DDevice (`Direct3D11Helper`), SwapChain1 (B8G8R8A8, flip-sequential, 2 buffers, premultiplied), frame pool (2 buffers); `FrameArrived` copies frame texture to back buffer and `Present(0)`; on size change resizes buffers and recreates pool. Surface exposed via `Compositor.CreateCompositionSurfaceForSwapChain` → `CompositionSurfaceBrush`.
 
