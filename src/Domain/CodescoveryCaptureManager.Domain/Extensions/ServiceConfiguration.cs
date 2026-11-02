@@ -13,6 +13,12 @@ namespace CodescoveryCaptureManager.Domain.Extensions
         public static IServiceCollection AddWindowsProcessServices(this IServiceCollection services, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
         => services.InjectService<IWindowsProcessServices, WindowsProcessServices>(serviceLifetime);
 
+        public static IServiceCollection AddFocusBridge(this IServiceCollection services)
+        {
+            services.AddSingleton(_ => FocusBridgeOptions.FromEnvironment());
+            return services.InjectService<IFocusBridge, FocusBridgeService>(ServiceLifetime.Singleton);
+        }
+
         public static IServiceCollection AddCapturableWindowsMonitoringService(this IServiceCollection services,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
         {

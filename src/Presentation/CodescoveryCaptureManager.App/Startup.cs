@@ -9,7 +9,8 @@ namespace CodescoveryCaptureManager.App
     {
         private readonly IDisposable _parent;
         private readonly IServiceCollection _services;
-        public IServiceProvider ServiceProvider => _services?.BuildServiceProvider();
+        private IServiceProvider _serviceProvider;
+        public IServiceProvider ServiceProvider => _serviceProvider ??= _services?.BuildServiceProvider();
 
         public Startup(IDisposable parent=null)
         {
@@ -23,6 +24,7 @@ namespace CodescoveryCaptureManager.App
 
             services.AddCapturableWindowsMonitoringService();
             services.AddWindowsProcessServices();
+            services.AddFocusBridge();
             services.AddTransient<CapturedWindows>();
             //_services.AddSingleton<IconTrayController>();
             return services;

@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.Linq;
 using System.Numerics;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -34,12 +35,15 @@ namespace CodescoveryCaptureManager.App.Windows
         private VirtualDesktop _virtualDesktop;
         private readonly VirtualDesktop _mainVirtualDesktop;
         private bool _isMenuExpanded = true;
-        public CapturedWindows(ICapturableWindowsMonitoringService capturableWindowsMonitoringService, IWindowsProcessServices windowsProcessServices)
+        private readonly IFocusBridge _focusBridge;
+        public CapturedWindows(ICapturableWindowsMonitoringService capturableWindowsMonitoringService, IWindowsProcessServices windowsProcessServices, IFocusBridge focusBridge)
         {
 
             InitializeComponent();
             _capturableWindowsMonitoringService = capturableWindowsMonitoringService;
             _windowsProcessServices = windowsProcessServices;
+            _focusBridge = focusBridge;
+            _focusBridge.Start();
             _compositor = new Compositor();
             _containerVisual = InitializeContainerVisual();
             _windowCaptureService = new WindowCaptureService(_compositor);
@@ -72,7 +76,25 @@ namespace CodescoveryCaptureManager.App.Windows
 
         private void StartCapturing()
         {
-            _capturableWindowsMonitoringService.StartMonitoring();
+            _ = RunMonitoringAsync();
+        }
+
+        private async Task RunMonitoringAsync()
+        {
+            try
+            {
+                await _capturableWindowsMonitoringService.StartMonitoring();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Monitoring stopped unexpectedly. {ex.Message}");
+            }
+        }
+
+        private void CapturableWindowsMonitoringServiceOnMonitoredWindowClosed(CapturableWindow closedcapturablewindow)
+        {
+            if (_windowCaptureService != null && _windowCaptureService.IsCapturing(closedcapturablewindow.Handle))
+                _windowCaptureService.StopCapture();
         }
         private void StopCapturing()
         {
@@ -84,6 +106,7 @@ namespace CodescoveryCaptureManager.App.Windows
             CurrentWindowTitle.Text = Title;
             CurrentWindowTitle.TextChanged += CurrentWindowTitleOnTextChanged;
             _capturableWindowsMonitoringService.MonitoredWindowFocused += CapturableWindowsMonitoringServiceOnMonitoredWindowFocused;
+            _capturableWindowsMonitoringService.MonitoredWindowClosed += CapturableWindowsMonitoringServiceOnMonitoredWindowClosed;
         }
 
         private void CapturableWindowsMonitoringServiceOnMonitoredWindowFocused(CapturableWindow activecapturablewindow)
@@ -92,6 +115,7 @@ namespace CodescoveryCaptureManager.App.Windows
             {
                 if (_windowCaptureService == null) return;
 
+                _focusBridge.Publish(activecapturablewindow);
                 var item = CaptureHelper.CreateItemForWindow(activecapturablewindow.Handle);
                 if (item == null) return;
                 if (_windowCaptureService.IsCapturing(activecapturablewindow.Handle)) return;
@@ -143,6 +167,7 @@ namespace CodescoveryCaptureManager.App.Windows
         public void Dispose()
         {
             StopCapturing();
+            _focusBridge?.Dispose();
             _windowsProcessServices?.Dispose();
             _capturableWindowsMonitoringService?.Dispose();
         }
@@ -172,7 +197,6 @@ namespace CodescoveryCaptureManager.App.Windows
 
         private void CapturedWindows_OnClosing(object sender, CancelEventArgs e)
         {
-            StopCapturing();
             Dispose();
         }
 
