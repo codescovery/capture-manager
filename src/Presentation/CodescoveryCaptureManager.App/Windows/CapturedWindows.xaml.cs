@@ -36,6 +36,11 @@ namespace CodescoveryCaptureManager.App.Windows
         private readonly VirtualDesktop _mainVirtualDesktop;
         private bool _isMenuExpanded = true;
         private readonly IFocusBridge _focusBridge;
+        private FocusFallbackMode _fallbackMode = FocusFallbackMode.Message;
+        private IntPtr _fallbackWindowHandle;
+
+        private enum FocusFallbackMode { Message, KeepLast, FixedWindow }
+
         public CapturedWindows(ICapturableWindowsMonitoringService capturableWindowsMonitoringService, IWindowsProcessServices windowsProcessServices, IFocusBridge focusBridge)
         {
 
@@ -98,11 +103,90 @@ namespace CodescoveryCaptureManager.App.Windows
             Dispatcher.BeginInvoke(UpdateEmptyState);
         }
 
+        private void OnMonitoredWindowsBlurred()
+        {
+            ApplyFocusFallback();
+            UpdateEmptyState();
+        }
+
+        // What the view shows while no selected window is focused (user setting, see settings menu).
+        private void ApplyFocusFallback()
+        {
+            if (_fallbackMode == FocusFallbackMode.KeepLast) return;
+            if (_fallbackMode == FocusFallbackMode.FixedWindow && TryShowFallbackWindow()) return;
+            _windowCaptureService?.StopCapture();
+        }
+
+        private bool TryShowFallbackWindow()
+        {
+            if (!_capturableWindowsMonitoringService.IsMonitored(_fallbackWindowHandle))
+            {
+                SetFallback(FocusFallbackMode.Message);
+                return false;
+            }
+            ShowCapturedWindow(_capturableWindowsMonitoringService.GetCapturableWindow(_fallbackWindowHandle));
+            return true;
+        }
+
+        private void SetFallback(FocusFallbackMode mode, IntPtr fixedWindowHandle = default)
+        {
+            _fallbackMode = mode;
+            _fallbackWindowHandle = fixedWindowHandle;
+            if (_capturableWindowsMonitoringService.IsBlurred)
+                OnMonitoredWindowsBlurred();
+        }
+
+        private void FallbackMessage_OnClick(object sender, RoutedEventArgs e) => SetFallback(FocusFallbackMode.Message);
+
+        private void FallbackKeepLast_OnClick(object sender, RoutedEventArgs e) => SetFallback(FocusFallbackMode.KeepLast);
+
+        private void FallbackWindow_OnClick(object sender, RoutedEventArgs e)
+            => SetFallback(FocusFallbackMode.FixedWindow, (IntPtr)((MenuItem)sender).Tag);
+
+        // Rebuilt each time the menu opens: one checkable entry per picked window plus the two fixed modes.
+        private void ConfigureFallbackMenu()
+        {
+            foreach (var staleItem in FallbackMenu.Items.OfType<MenuItem>().Where(item => item.Tag is IntPtr).ToList())
+                FallbackMenu.Items.Remove(staleItem);
+
+            foreach (var window in _capturableWindowsMonitoringService.GetMonitoredWindows())
+                FallbackMenu.Items.Add(CreateFallbackWindowItem(window));
+
+            FallbackWindowsSeparator.Visibility = FallbackMenu.Items.OfType<MenuItem>().Any(item => item.Tag is IntPtr)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            FallbackMessage.IsChecked = _fallbackMode == FocusFallbackMode.Message;
+            FallbackKeepLast.IsChecked = _fallbackMode == FocusFallbackMode.KeepLast;
+        }
+
+        private MenuItem CreateFallbackWindowItem(CapturableWindow window)
+        {
+            var item = new MenuItem
+            {
+                Header = $"Always show: {window.Name}",
+                IsCheckable = true,
+                IsChecked = _fallbackMode == FocusFallbackMode.FixedWindow && _fallbackWindowHandle == window.Handle,
+                Tag = window.Handle,
+            };
+            item.Click += FallbackWindow_OnClick;
+            return item;
+        }
+
         private void UpdateEmptyState()
         {
-            EmptyState.Visibility = _capturableWindowsMonitoringService.HasMonitoredWindows()
-                ? Visibility.Collapsed
-                : Visibility.Visible;
+            var hasMonitoredWindows = _capturableWindowsMonitoringService.HasMonitoredWindows();
+            var isShowingWindow = _windowCaptureService?.IsCapturing() ?? false;
+
+            EmptyState.Visibility = hasMonitoredWindows ? Visibility.Collapsed : Visibility.Visible;
+            NoFocusState.Visibility = hasMonitoredWindows && !isShowingWindow ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void OnPickerClosed()
+        {
+            var isShowingWindow = _windowCaptureService?.IsCapturing() ?? false;
+            if (_fallbackMode == FocusFallbackMode.FixedWindow && !isShowingWindow)
+                TryShowFallbackWindow();
+            UpdateEmptyState();
         }
 
         private void SettingsButton_OnClick(object sender, RoutedEventArgs e)
@@ -121,25 +205,32 @@ namespace CodescoveryCaptureManager.App.Windows
             CurrentWindowTitle.TextChanged += CurrentWindowTitleOnTextChanged;
             _capturableWindowsMonitoringService.MonitoredWindowFocused += CapturableWindowsMonitoringServiceOnMonitoredWindowFocused;
             _capturableWindowsMonitoringService.MonitoredWindowClosed += CapturableWindowsMonitoringServiceOnMonitoredWindowClosed;
+            _capturableWindowsMonitoringService.MonitoredWindowsBlurred += OnMonitoredWindowsBlurred;
         }
 
         private void CapturableWindowsMonitoringServiceOnMonitoredWindowFocused(CapturableWindow activecapturablewindow)
         {
+            if (_windowCaptureService == null) return;
+            _focusBridge.Publish(activecapturablewindow);
+            ShowCapturedWindow(activecapturablewindow);
+        }
+
+        private void ShowCapturedWindow(CapturableWindow window)
+        {
             try
             {
-                if (_windowCaptureService == null) return;
+                if (_windowCaptureService.IsCapturing(window.Handle)) return;
 
-                _focusBridge.Publish(activecapturablewindow);
-                var item = CaptureHelper.CreateItemForWindow(activecapturablewindow.Handle);
+                var item = CaptureHelper.CreateItemForWindow(window.Handle);
                 if (item == null) return;
-                if (_windowCaptureService.IsCapturing(activecapturablewindow.Handle)) return;
 
-                _windowCaptureService.StartCapture(item, activecapturablewindow.Handle);
+                _windowCaptureService.StartCapture(item, window.Handle);
+                UpdateEmptyState();
             }
             catch (Exception ex)
             {
                 _windowCaptureService?.StopCapture();
-                Console.WriteLine($"Error capturing {activecapturablewindow.Name}. {ex.Message}");
+                Console.WriteLine($"Error capturing {window.Name}. {ex.Message}");
             }
         }
 
@@ -155,6 +246,7 @@ namespace CodescoveryCaptureManager.App.Windows
         {
             //CurrentWindowTitle.Text = Title;
             //CreateOpenedWindowsMenuItems(_windowsProcessServices.GetOpenedWindows(this));
+            ConfigureFallbackMenu();
             ConfigureVirtualDesktopActions();
             CurrentWindowTitleOnTextChanged(this,null);
         }
@@ -175,7 +267,7 @@ namespace CodescoveryCaptureManager.App.Windows
         public  void OpenCapturePicker(object sender, RoutedEventArgs e)
         {
             var selectCapturableWindows = new SelectCapturableWindows(_windowsProcessServices, _capturableWindowsMonitoringService, _windowCaptureService);
-            selectCapturableWindows.Closed += (_, _) => UpdateEmptyState();
+            selectCapturableWindows.Closed += (_, _) => OnPickerClosed();
             selectCapturableWindows.Pick(this);
         }
 

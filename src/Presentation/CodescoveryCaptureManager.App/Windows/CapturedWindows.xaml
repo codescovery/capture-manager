@@ -38,6 +38,14 @@
                         <materialDesign:PackIcon Kind="Cog" Width="18" Height="18" />
                         <Button.ContextMenu>
                             <ContextMenu Name="SettingsMenu" Opened="SettingsMenu_OnSubmenuOpened">
+                                <MenuItem Header="When no selected window is focused" Name="FallbackMenu">
+                                    <MenuItem Header="Show a message" Name="FallbackMessage" IsCheckable="True"
+                                              IsChecked="True" Click="FallbackMessage_OnClick" />
+                                    <MenuItem Header="Keep the last window" Name="FallbackKeepLast" IsCheckable="True"
+                                              Click="FallbackKeepLast_OnClick" />
+                                    <Separator Name="FallbackWindowsSeparator" />
+                                </MenuItem>
+                                <Separator />
                                 <MenuItem Header="Virtual desktop" Name="VirtualDesktopActions" IsEnabled="False">
                                     <MenuItem Header="Move to virtual desktop" Name="MoveToVirtualDesktop"
                                               Click="MoveToVirtualDesktop_OnClick" IsEnabled="False" />
@@ -78,7 +86,7 @@
 
         <Grid Name="ScreenCaptureGrid">
             <StackPanel Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="420">
-                <materialDesign:PackIcon Kind="MonitorShare" Width="56" Height="56" Foreground="#9575CD"
+                <materialDesign:PackIcon Kind="MonitorShare" Width="56" Height="56" Foreground="{StaticResource BrandBrush}"
                                          HorizontalAlignment="Center" />
                 <TextBlock Text="No windows selected" FontSize="18" FontWeight="SemiBold" Margin="0,12,0,4"
                            HorizontalAlignment="Center" />
@@ -86,6 +94,16 @@
                            Text="Pick the windows to expose. This window then shows only the one you are focused on; share it in Teams, Meet or OBS instead of your screen." />
                 <Button Content="Choose windows" Margin="0,16,0,0" HorizontalAlignment="Center"
                         Style="{StaticResource MaterialDesignRaisedButton}" Click="OpenCapturePicker" />
+            </StackPanel>
+
+            <StackPanel Name="NoFocusState" Visibility="Collapsed" HorizontalAlignment="Center"
+                        VerticalAlignment="Center" MaxWidth="420">
+                <materialDesign:PackIcon Kind="EyeOff" Width="56" Height="56" Foreground="{StaticResource BrandBrush}"
+                                         HorizontalAlignment="Center" />
+                <TextBlock Text="No selected window is focused" FontSize="18" FontWeight="SemiBold" Margin="0,12,0,4"
+                           HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+                <TextBlock TextWrapping="Wrap" TextAlignment="Center" Foreground="{StaticResource MutedBrush}"
+                           Text="Nothing is being shared right now. Click one of the windows you picked and it appears here." />
             </StackPanel>
         </Grid>
     </DockPanel>

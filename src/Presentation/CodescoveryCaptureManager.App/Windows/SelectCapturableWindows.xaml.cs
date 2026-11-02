@@ -78,6 +78,7 @@ namespace CodescoveryCaptureManager.App.Windows
             await limiter.WaitAsync(cancellationToken);
             try
             {
+                item.IsMinimized = WindowThumbnailProvider.IsMinimized(item.Handle);
                 var iconTask = WindowThumbnailProvider.LoadIconAsync(item.Window.Process);
                 item.Thumbnail = await WindowThumbnailProvider.CaptureThumbnailAsync(item.Handle);
                 item.Icon = await iconTask;
@@ -141,7 +142,7 @@ namespace CodescoveryCaptureManager.App.Windows
                 ApplyItem(item);
 
             _windowCaptureService.StopCapture();
-            _capturableWindowsMonitoringService.FocusFirstMonitoringWindow();
+            _capturableWindowsMonitoringService.SyncWithForegroundWindow();
         }
 
         private void ApplyItem(WindowPickerItem item)
@@ -165,6 +166,17 @@ namespace CodescoveryCaptureManager.App.Windows
                 SearchBox.Focus();
                 e.Handled = true;
             }
+        }
+
+        [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
+        // The window is dark; ask DWM for a dark title bar (DWMWA_USE_IMMERSIVE_DARK_MODE = 20).
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            var useDarkMode = 1;
+            DwmSetWindowAttribute(new System.Windows.Interop.WindowInteropHelper(this).Handle, 20, ref useDarkMode, sizeof(int));
         }
 
         protected override void OnClosed(EventArgs e)

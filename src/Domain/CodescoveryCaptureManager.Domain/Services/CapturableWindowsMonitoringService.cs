@@ -14,6 +14,7 @@ namespace CodescoveryCaptureManager.Domain.Services
     {
         private readonly IDictionary<IntPtr, CapturableWindow> _capturableWindows;
         private CancellationTokenSource _cancellationTokenSource;
+        private bool _isBlurred;
 
         public delegate void MonitoredWindowFocus(IntPtr activeCapturableWindowInteropHandle);
         
@@ -29,7 +30,7 @@ namespace CodescoveryCaptureManager.Domain.Services
                 _cancellationTokenSource = new CancellationTokenSource();
 
             var token = _cancellationTokenSource.Token;
-            FocusFirstMonitoringWindow();
+            SyncWithForegroundWindow();
             while (!token.IsCancellationRequested)
             {
                 await Task.Delay(CapturableWindowDefaultValues.RefreshRate);
@@ -37,7 +38,12 @@ namespace CodescoveryCaptureManager.Domain.Services
                 {
                     PruneClosedWindows();
                     var activeCapturableWindowInteropHandle = NativeMethods.GetActiveWindow();
-                    if (!IsMonitored(activeCapturableWindowInteropHandle)) continue;
+                    if (!IsMonitored(activeCapturableWindowInteropHandle))
+                    {
+                        RaiseBlurredOnce(activeCapturableWindowInteropHandle);
+                        continue;
+                    }
+                    _isBlurred = false;
                     MonitoredWindowFocused?.Invoke(_capturableWindows[activeCapturableWindowInteropHandle]);
                 }
                 catch (Exception ex)
@@ -96,22 +102,49 @@ namespace CodescoveryCaptureManager.Domain.Services
 
         public bool HasMonitoredWindows() => _capturableWindows != null && _capturableWindows.Any();
 
-        public void FocusFirstMonitoringWindow()
+        public IReadOnlyList<CapturableWindow> GetMonitoredWindows()
+            => _capturableWindows?.Values.ToList() ?? new List<CapturableWindow>();
+
+        public bool IsBlurred => _isBlurred;
+
+        // A window of this app (picker, capture window) is neutral: the last view stays. Anything else unpicked blanks the view.
+        private static bool IsForeignWindow(IntPtr windowHandle)
         {
-            if (_capturableWindows != null && _capturableWindows.Any())
-                MonitoredWindowFocused?.Invoke(_capturableWindows.Values.FirstOrDefault());
+            if (windowHandle == IntPtr.Zero) return false;
+            NativeMethods.GetWindowThreadProcessId(windowHandle, out var processId);
+            return processId != Environment.ProcessId;
+        }
+
+        private void RaiseBlurredOnce(IntPtr foregroundHandle)
+        {
+            if (_isBlurred || !IsForeignWindow(foregroundHandle)) return;
+            _isBlurred = true;
+            MonitoredWindowsBlurred?.Invoke();
+        }
+
+        // Re-evaluates focus right now. A monitored window is shown only if it really is the foreground window;
+        // otherwise nothing is raised (never show an unfocused window).
+        public void SyncWithForegroundWindow()
+        {
+            var foregroundHandle = NativeMethods.GetActiveWindow();
+            if (!IsMonitored(foregroundHandle)) return;
+
+            _isBlurred = false;
+            MonitoredWindowFocused?.Invoke(_capturableWindows[foregroundHandle]);
         }
 
         public CapturableWindow GetCapturableWindow(IntPtr processInteropHandle)
             => _capturableWindows[processInteropHandle];
         public event ICapturableWindowsMonitoringService.MonitoredWindowFocus MonitoredWindowFocused;
         public event ICapturableWindowsMonitoringService.MonitoredWindowClosure MonitoredWindowClosed;
+        public event ICapturableWindowsMonitoringService.MonitoredWindowsBlur MonitoredWindowsBlurred;
 
         public void Dispose()
         {
             _capturableWindows?.Clear();
             MonitoredWindowFocused = null;
             MonitoredWindowClosed = null;
+            MonitoredWindowsBlurred = null;
             _cancellationTokenSource?.Cancel();
             _cancellationTokenSource?.Dispose();
         }

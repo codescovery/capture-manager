@@ -11,6 +11,15 @@
                 <materialDesign:BundledTheme BaseTheme="Dark" PrimaryColor="DeepPurple" SecondaryColor="Lime" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign2.Defaults.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            <!-- Brand green from Assets/icon.svg replaces the theme's primary hue. -->
+            <Color x:Key="BrandColor">#8DC63F</Color>
+            <Color x:Key="BrandForegroundColor">#1E1E1E</Color>
+            <SolidColorBrush x:Key="BrandBrush" Color="{StaticResource BrandColor}" />
+            <SolidColorBrush x:Key="BrandForegroundBrush" Color="{StaticResource BrandForegroundColor}" />
+            <SolidColorBrush x:Key="PrimaryHueMidBrush" Color="{StaticResource BrandColor}" />
+            <SolidColorBrush x:Key="PrimaryHueMidForegroundBrush" Color="{StaticResource BrandForegroundColor}" />
+            <SolidColorBrush x:Key="MaterialDesign.Brush.Primary" Color="{StaticResource BrandColor}" />
+            <SolidColorBrush x:Key="MaterialDesign.Brush.Primary.Foreground" Color="{StaticResource BrandForegroundColor}" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>
