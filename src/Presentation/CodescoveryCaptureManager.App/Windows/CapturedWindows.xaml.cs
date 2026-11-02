@@ -95,6 +95,20 @@ namespace CodescoveryCaptureManager.App.Windows
         {
             if (_windowCaptureService != null && _windowCaptureService.IsCapturing(closedcapturablewindow.Handle))
                 _windowCaptureService.StopCapture();
+            Dispatcher.BeginInvoke(UpdateEmptyState);
+        }
+
+        private void UpdateEmptyState()
+        {
+            EmptyState.Visibility = _capturableWindowsMonitoringService.HasMonitoredWindows()
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+        }
+
+        private void SettingsButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            SettingsButton.ContextMenu.PlacementTarget = SettingsButton;
+            SettingsButton.ContextMenu.IsOpen = true;
         }
         private void StopCapturing()
         {
@@ -161,7 +175,8 @@ namespace CodescoveryCaptureManager.App.Windows
         public  void OpenCapturePicker(object sender, RoutedEventArgs e)
         {
             var selectCapturableWindows = new SelectCapturableWindows(_windowsProcessServices, _capturableWindowsMonitoringService, _windowCaptureService);
-            selectCapturableWindows.Pick(  this);
+            selectCapturableWindows.Closed += (_, _) => UpdateEmptyState();
+            selectCapturableWindows.Pick(this);
         }
 
         public void Dispose()
@@ -177,6 +192,7 @@ namespace CodescoveryCaptureManager.App.Windows
             _compositionTarget = InitializeDesktopWindowTarget();
             _compositionTarget.Root = _containerVisual;
             _containerVisual.Children.InsertAtTop(_windowCaptureService.GetVisual());
+            UpdateEmptyState();
         }
         private CompositionTarget InitializeDesktopWindowTarget()
         {
@@ -187,6 +203,7 @@ namespace CodescoveryCaptureManager.App.Windows
         {
             CapturedWindowsMenu.Visibility = CapturedWindowsMenu.Visibility == Visibility.Collapsed ? Visibility.Visible : Visibility.Collapsed;
             _isMenuExpanded = CapturedWindowsMenu.Visibility != Visibility.Collapsed;
+            ShowToolbarButton.Visibility = _isMenuExpanded ? Visibility.Collapsed : Visibility.Visible;
             SwitchMenuExpanderIcon();
         }
 
@@ -229,12 +246,26 @@ namespace CodescoveryCaptureManager.App.Windows
 
         private void CapturedWindows_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            DragMove();
+            if (e.ButtonState == MouseButtonState.Pressed)
+                DragMove();
         }
 
+        // Toolbar background drags the window; clicks inside the title box must not.
         private void CapturedWindowsMenu_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            e.Handled = true;
+            e.Handled = IsInsideTextBox(e.OriginalSource as DependencyObject);
+        }
+
+        private static bool IsInsideTextBox(DependencyObject element)
+        {
+            while (element != null)
+            {
+                if (element is TextBox) return true;
+                element = element is System.Windows.Media.Visual
+                    ? System.Windows.Media.VisualTreeHelper.GetParent(element)
+                    : LogicalTreeHelper.GetParent(element);
+            }
+            return false;
         }
 
         private void CapturedWindows_OnMouseDoubleClick(object sender, MouseButtonEventArgs e)

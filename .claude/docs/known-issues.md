@@ -12,11 +12,9 @@ Fixed 2026-11-02 (see decisions.md): monitoring loop try/catch + observed task, 
 6. Dictionary is mutated from monitoring tick and picker, both on UI thread; keep it that way or add locking.
 
 ## Correctness / design
-8. Picker `Apply` toggles by *click parity*; calls `StopCapture` + `FocusFirstMonitoringWindow` per item.
 9. After selecting windows, `FocusFirstMonitoringWindow` shows first dictionary entry, not the focused one.
-10. Picker thumbnails use `CopyFromScreen` → captures whatever covers the window (overlaps, minimized, other virtual desktops). Branch `feature/previewSelectWindow` targets this; better: one Graphics Capture frame or DWM thumbnail.
+10. Picker thumbnails use `PrintWindow`: minimized windows and some GPU/protected windows give a placeholder or black image; a Graphics Capture frame would be more faithful. Picker/new toolbar not yet verified visually by a human; no live refresh of the window list while open.
 11. 10 ms polling of foreground window; could use `SetWinEventHook(EVENT_SYSTEM_FOREGROUND)`.
-12. Window names: `Substring(0, max)` + `"..."` always appended, even when short.
-13. Hardcoded 3-per-row grid; all UI built in code-behind (no MVVM); picker has many unused usings.
+13. No MVVM: code-behind drives both windows (picker uses a small item view-model only).
 15. `src/.vs`, `src/.idea`, `*.csproj.user` tracked in git (check .gitignore).
 16. No tests; auto-update untested (Velopack wired but untested end to end: see release-and-distribution.md).

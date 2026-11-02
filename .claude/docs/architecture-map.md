@@ -25,13 +25,16 @@ CapturedWindows (main window, Windows/CapturedWindows.xaml[.cs])
    ├─ OnLoaded: Compositor.CreateDesktopWindowTarget(own HWND) ← root visual ← WindowCaptureService.GetVisual()
    ├─ ctor → StartCapturing() → ICapturableWindowsMonitoringService.StartMonitoring() (fire-and-forget async loop)
    ├─ subscribes MonitoredWindowFocused → CreateItemForWindow(hwnd) → WindowCaptureService.StartCapture
-   ├─ menu: title edit, virtual desktop move/close, open picker, min/max/close, drag, expander
+   ├─ toolbar (Border, not Menu): editable title, picker, settings ContextMenu (virtual desktop), hide-toolbar, min/max/close; drag on toolbar background or capture area
+   ├─ EmptyState overlay ("Choose windows") shown while `HasMonitoredWindows()` is false; refreshed on load, picker close, window closed
    └─ OpenCapturePicker → new SelectCapturableWindows(...).Pick(this)
 
 SelectCapturableWindows (picker, Windows/SelectCapturableWindows.xaml[.cs])
-   ├─ IWindowsProcessServices.GetOpenedWindows(ignore self + main) → list of CapturableWindow
-   ├─ builds Card grid in code (3 per row), screenshot thumbnail via GDI CopyFromScreen
-   └─ Apply: toggles each clicked window in/out of monitoring service, StopCapture, FocusFirstMonitoringWindow
+   ├─ resizable, owner = main window; header + search box, WrapPanel of cards (ItemsControl + DataTemplate), footer (Select all / Clear / count / Cancel / Apply)
+   ├─ IWindowsProcessServices.GetOpenedWindows(ignore self + main) → `WindowPickerItem` (INotifyPropertyChanged: title, process, icon, thumbnail, IsSelected); monitored first, then by title
+   ├─ `Helpers/WindowThumbnailProvider`: per-window thumbnail via `PrintWindow(PW_RENDERFULLCONTENT)` + app icon, on thread pool (max 4 parallel), frozen BitmapSource, cancelled on close; minimized/failed → placeholder icon
+   ├─ selection starts = currently monitored set; search filters via ICollectionView; Select all/Clear act on visible cards
+   └─ Apply (enabled only if something changed, Ctrl+Enter): add newly selected, remove deselected, one StopCapture + FocusFirstMonitoringWindow. Ctrl+F focuses search
 
 Domain/Services
    ├─ FocusBridgeService (internal, IFocusBridge): loopback WebSocket server publishing the focused picked window title to browser pages (see web-prototype.md)
@@ -45,7 +48,7 @@ Domain/Services
 
 **Startup**: `App()` → `Startup` (DI) + DispatcherQueueController → `App_OnStartup` resolves `CapturedWindows` → `Show()`. Ctor starts monitoring (nothing monitored yet, loop idles).
 
-**Pick windows**: menu → `OpenCapturePicker` → picker enumerates windows (ignores `applicationframehost, shellexperiencehost, systemsettings, winstore.app, searchui, explorer`, hidden, untitled, self) → click card toggles in local `_capturedWindows` + checkbox → Apply: for each toggled window: StopCapture; if monitored remove else add; FocusFirstMonitoringWindow.
+**Pick windows**: menu → `OpenCapturePicker` → picker enumerates windows (ignores `applicationframehost, shellexperiencehost, systemsettings, winstore.app, searchui, explorer`, hidden, untitled, self) → click card toggles `IsSelected` → Apply: diff selection vs monitored set (add/remove), then StopCapture + FocusFirstMonitoringWindow once.
 
 **Focus-follow loop** (`StartMonitoring`): every `CapturableWindowDefaultValues.RefreshRate` (10 ms) `Task.Delay` → `NativeMethods.GetActiveWindow()` (wraps `GetForegroundWindow`) → if foreground HWND is monitored → raise `MonitoredWindowFocused`. Each tick first prunes HWNDs failing `IsWindow` (raises `MonitoredWindowClosed`; UI stops capture if it was showing that window) and is wrapped in try/catch. UI handler skips if already capturing that HWND, else starts new capture (stops previous). Switching to a non-monitored window leaves last capture displayed.
 

@@ -94,6 +94,8 @@ namespace CodescoveryCaptureManager.Domain.Services
                                                                 _capturableWindows.Any() &&
                                                                 _capturableWindows.ContainsKey(processInteropHandle);
 
+        public bool HasMonitoredWindows() => _capturableWindows != null && _capturableWindows.Any();
+
         public void FocusFirstMonitoringWindow()
         {
             if (_capturableWindows != null && _capturableWindows.Any())

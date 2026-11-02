@@ -12,6 +12,7 @@ namespace CodescoveryCaptureManager.Domain.Interfaces
         void AddMonitoringWindow(CapturableWindow capturableWindow);
         void RemoveMonitoringWindow(IntPtr processInteropHandle);
         bool IsMonitored(IntPtr processInteropHandle);
+        bool HasMonitoredWindows();
         void FocusFirstMonitoringWindow();
         CapturableWindow GetCapturableWindow(IntPtr processInteropHandle);
         
