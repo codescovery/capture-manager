@@ -35,6 +35,22 @@
     <Page Include="App.xaml" />
   </ItemGroup>
 
+  <PropertyGroup>
+    <WebProjectDir>$(MSBuildThisFileDirectory)..\..\Web\CodescoveryCaptureManager.Web\</WebProjectDir>
+    <WebDistDir>$(WebProjectDir)dist\</WebDistDir>
+  </PropertyGroup>
+
+  <!-- React UI served by the focus bridge. Pass -p:SkipWebBuild=true to build the desktop app without Node. -->
+  <Target Name="BuildWebUi" BeforeTargets="AssignTargetPaths" Condition="'$(SkipWebBuild)' != 'true'">
+    <Exec Command="npm ci --no-audit --no-fund" WorkingDirectory="$(WebProjectDir)" Condition="!Exists('$(WebProjectDir)node_modules')" ContinueOnError="true" />
+    <Exec Command="npm run build" WorkingDirectory="$(WebProjectDir)" ContinueOnError="true" />
+    <ItemGroup>
+      <WebUiFile Include="$(WebDistDir)**\*" />
+      <Content Include="@(WebUiFile)" Link="web\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+    <Warning Condition="'@(WebUiFile)' == ''" Text="Web UI not built (is Node installed?). The desktop app works, but http://127.0.0.1:47800/ will not serve a page." />
+  </Target>
+
   <ItemGroup>
     <Resource Include="Assets\icon.ico">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
