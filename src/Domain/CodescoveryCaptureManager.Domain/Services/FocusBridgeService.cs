@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.WebSockets;
@@ -26,13 +27,17 @@ namespace CodescoveryCaptureManager.Domain.Services
         private readonly ConcurrentDictionary<Guid, WebSocket> _clients = new ConcurrentDictionary<Guid, WebSocket>();
         private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        private static readonly string BlurredMessage = JsonSerializer.Serialize(new { focused = false });
+
+        private readonly StaticSiteResponder _site;
         private IntPtr _lastPublishedHandle = IntPtr.Zero;
-        private string _lastMessage;
+        private volatile string _lastMessage = BlurredMessage;
         private bool _started;
 
         public FocusBridgeService(FocusBridgeOptions options)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
+            _site = new StaticSiteResponder(Path.Combine(AppContext.BaseDirectory, options.WebDirectoryName));
         }
 
         public void Start()
@@ -61,11 +66,26 @@ namespace CodescoveryCaptureManager.Domain.Services
             _ = BroadcastAsync(_lastMessage);
         }
 
+        public void PublishBlurred()
+        {
+            if (!_started || _lastPublishedHandle == IntPtr.Zero) return;
+
+            _lastPublishedHandle = IntPtr.Zero;
+            _lastMessage = BlurredMessage;
+            _ = BroadcastAsync(_lastMessage);
+        }
+
         private static string BuildMessage(CapturableWindow window)
         {
             var title = new StringBuilder(TitleBufferSize);
             NativeMethods.GetWindowText(window.Handle, title, title.Capacity);
-            return JsonSerializer.Serialize(new { focusedTitle = title.ToString(), processName = ReadProcessName(window) });
+            return JsonSerializer.Serialize(new
+            {
+                focused = true,
+                focusedTitle = title.ToString(),
+                processName = ReadProcessName(window),
+                handle = window.Handle.ToInt64(),
+            });
         }
 
         private static string ReadProcessName(CapturableWindow window)
@@ -104,6 +124,12 @@ namespace CodescoveryCaptureManager.Domain.Services
 
         private async Task HandleAsync(HttpListenerContext context, CancellationToken cancellationToken)
         {
+            if (!context.Request.IsWebSocketRequest)
+            {
+                await ServeSiteAsync(context);
+                return;
+            }
+
             if (!await RejectIfNotAllowedAsync(context)) return;
 
             try
@@ -128,9 +154,27 @@ namespace CodescoveryCaptureManager.Domain.Services
             return false;
         }
 
+        private async Task ServeSiteAsync(HttpListenerContext context)
+        {
+            try
+            {
+                if (_site.IsAvailable)
+                {
+                    await _site.RespondAsync(context);
+                    return;
+                }
+
+                context.Response.StatusCode = (int)HttpStatusCode.UpgradeRequired;
+                context.Response.Close();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Focus bridge site failed. {ex.Message}");
+            }
+        }
+
         private int ResolveRejection(HttpListenerRequest request)
         {
-            if (!request.IsWebSocketRequest) return (int)HttpStatusCode.UpgradeRequired;
             if (!IsAllowedOrigin(request.Headers["Origin"])) return (int)HttpStatusCode.Forbidden;
             return 0;
         }

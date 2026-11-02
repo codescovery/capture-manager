@@ -10,6 +10,9 @@ namespace CodescoveryCaptureManager.Domain.Services
 
         public int Port { get; set; } = 47800;
 
+        /// <summary>Folder (next to the executable) holding the built web UI.</summary>
+        public string WebDirectoryName { get; set; } = "web";
+
         public IReadOnlyList<string> AllowedOrigins { get; set; } = Array.Empty<string>();
 
         public static FocusBridgeOptions FromEnvironment()

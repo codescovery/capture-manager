@@ -114,6 +114,7 @@ namespace CodescoveryCaptureManager.App.Windows
 
         private void OnMonitoredWindowsBlurred()
         {
+            _focusBridge.PublishBlurred();
             ApplyFocusFallback();
             UpdateEmptyState();
         }

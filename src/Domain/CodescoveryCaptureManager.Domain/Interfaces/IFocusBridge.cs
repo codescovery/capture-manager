@@ -7,5 +7,6 @@ namespace CodescoveryCaptureManager.Domain.Interfaces
     {
         void Start();
         void Publish(CapturableWindow focusedWindow);
+        void PublishBlurred();
     }
 }
