@@ -1,51 +1,62 @@
 # Web UI (`src/Web/CodescoveryCaptureManager.Web`)
 
-React 18 + TypeScript + Vite app, part of the solution tree. The desktop app builds it, **embeds it in the Domain assembly** and **serves it itself** at `http://127.0.0.1:47800/` (same server as the focus bridge). Open that URL in Chrome/Edge (use `127.0.0.1`, not `localhost`: `HttpListener` matches the Host header to its prefix; `127.0.0.1` is a secure context so `getDisplayMedia` works).
+React 18 + TypeScript + Vite app, part of the solution tree. **It is a viewer of the desktop app**: Capture Manager captures, hardware-encodes to H.264 and streams the window it is showing; the page decodes with WebCodecs and paints it. The desktop app builds the page, embeds it in the Domain assembly and serves it at `http://127.0.0.1:47800/` (same server as the focus bridge). Open that URL in Chrome/Edge (use `127.0.0.1`, not `localhost`: `HttpListener` matches the Host header to its prefix).
 
-Replaces the old plain HTML/JS prototype in `web/` (removed).
+Replaces the earlier plain HTML/JS prototype (`getDisplayMedia` in the browser, removed): the browser no longer captures anything and picks no windows.
 
-## What it does
-- "+ Add window": `getDisplayMedia` (one browser picker per window, `selfBrowserSurface: exclude`). Each stream feeds a hidden `<video>`.
-- `Stage` canvas draws the shown source; the user shares **this tab** in Teams/Meet/OBS. A Web Worker timer (`lib/frameClock.ts`) drives drawing so a covered tab is not throttled.
-- **Follows the desktop focus** through the bridge (auto-connect + reconnect every 2 s). Options: follow on/off, "when no selected window is focused": show a message (default) / keep the last window (saved in `localStorage`). Picking a source by click or key 1-9 switches to manual mode.
-- Same semantics as the desktop: blur (a foreign unpicked window is focused) -> blank + "No selected window is focused"; a focused picked window that has no source in the browser -> blank + "not added here" (never keeps the last one: could be another window).
-- **Output only** (button, Esc leaves): hides panel and thumbnails so thumbnails of other windows never go on air. **Float controls**: Document Picture-in-Picture (Chrome/Edge 116+) hosts the panel through a React portal (`hooks/useFloatingPanel.tsx`), so the shared tab can stay in output-only mode.
-- Source names are editable (double-click) and used as a title fallback when matching.
+## What the page does
+- Connects to `ws://<same host>` (reconnects every 2 s). Text frames = focus state, binary frames = video.
+- `lib/videoPlayer.ts`: on each key frame reads the SPS from the Annex-B access unit (`lib/annexb.ts`) -> codec string `avc1.PPCCLL` -> `VideoDecoder.configure({optimizeForLatency, prefer-hardware, avc:{format:'annexb'}})`. Every decoded `VideoFrame` is drawn to the canvas immediately (no rAF, no buffer). If the decode queue grows (>4) it drops until the next key frame and sends the text message `key` to ask for one.
+- Same semantics as the desktop: `{focused:false}` -> blank + "No selected window is focused" (or keep the last picture, setting saved in `localStorage`); frames received while blurred are dropped. Offline desktop app -> "not running" message.
+- **Output only** (Esc leaves) hides panel/header so only the video is in the shared tab. **Float controls**: Document Picture-in-Picture (Chrome/Edge 116+) hosts the panel through a React portal (`hooks/useFloatingPanel.tsx`); the in-page panel is hidden while floating.
+- Panel shows connection state, focused window title and live `WxH · fps · Mbps`.
+- Which windows are shared is chosen only in the desktop app (picker / profiles). The web has no source list.
 
-## Matching browser sources to the focused window
-Bridge sends `handle` (HWND) and `focusedTitle`. Chrome window tracks are labelled `window:<native id>:<n>`; on Windows the id is believed to be the HWND, so `lib/focus.ts` matches `handle` first, then title/name overlap (min 3 chars, case-insensitive). **Not verified with a real window capture** (needs a human at the picker): if the id is not the HWND, matching falls back to titles and the user-given name.
+## Stream (desktop side, `Domain/Streaming`)
+```
+CaptureService.ProcessFrame ──IFrameTap.OnFrame(texture, w, h)──▶ VideoStreamService
+   Nv12Converter: D3D11 video processor BGRA -> NV12 (BT.709), scales >4096 px, ring of 8 NV12 textures (GPU only)
+   H264Encoder: Media Foundation H.264 encoder MFT
+        hardware (async MFT, D3D11 device manager, NeedInput/HaveOutput events) else Microsoft software encoder (sync, NV12 read back to CPU)
+        low latency, no B-frames, bitrate = w*h*60*0.12 (4-40 Mbps), key frame on request (ICodecAPI ForceKeyFrame)
+   ──EncodedFrame(Annex-B, isKey)──▶ FocusBridgeService ──binary WebSocket──▶ browser
+```
+- **Zero work without viewers**: `VideoStreamService` does nothing until `FocusBridgeService` reports >= 1 client (`SetViewerCount`); pipeline is created lazily on the first frame, rebuilt on content size change, torn down when capture stops (`CaptureService.Dispose -> OnCaptureStopped`) or the last viewer leaves.
+- Frames are rate-limited to 120 fps (capture rate = window/display rate). `Submit` keeps only the latest frame (latest wins) so the encoder never lags behind.
+- Per-client backpressure (`ClientConnection.TrySendVideo`): if a client's previous send is still pending the frame is dropped for that client, delta frames are skipped until the next key frame and a key frame is requested. Text messages are queued in order on the same per-client lock.
+- Binary frame layout: `[0]=1 (video)`, `[1]` bit0 = key frame, `[2..]` H.264 Annex-B access unit (SPS/PPS + IDR in key frames, AUD present).
+- Raw-vtable calls (`MediaFoundationNative`): `IMFTransform::ProcessOutput` (SharpDX does not copy the MFT-provided sample back) and `ICodecAPI::SetValue` (RCW marshaling fails from the encoder thread: E_NOINTERFACE). Vtable indices: ProcessOutput 25, ICodecAPI.SetValue 9. `MFShutdownObject` (`mf.dll`) unblocks the event loop on dispose.
+- `Direct3D11Helper.CreateDevice`: `BgraSupport | VideoSupport` and multithread protection (capture, converter and encoder threads share the device).
 
-## Focus bridge protocol (desktop `FocusBridgeService`)
-`ws://127.0.0.1:47800/` (text frames). New clients immediately receive the last message.
+## Bridge protocol (`FocusBridgeService`)
+`ws://127.0.0.1:47800/`. New clients immediately get the last text message, then a key frame is requested.
 
 ```json
 { "focused": true, "focusedTitle": "Document1 - Word", "processName": "WINWORD", "handle": 1180 }
 { "focused": false }
 ```
+Client -> server: the text `key` = request a key frame (only message accepted).
 
-- Focus message published from `MonitoredWindowFocused` (deduped by HWND); `{"focused":false}` from `MonitoredWindowsBlurred` (`IFocusBridge.PublishBlurred`, deduped). Initial state is blurred.
-- Old clients that only read `focusedTitle` keep working (legacy message had no `focused`/`handle`).
+- Focus text from `MonitoredWindowFocused` (deduped by HWND); blur from `MonitoredWindowsBlurred` (`IFocusBridge.PublishBlurred`). Initial state is blurred. Publishing a new focus also requests a key frame.
+- Security: loopback only; only the picked window being shown is ever streamed (nothing else leaves the process); WebSocket `Origin` must be loopback or in env var `CAPTURE_MANAGER_ALLOWED_ORIGINS`. Static site: GET/HEAD, embedded resources only, `nosniff`, `no-cache`; missing `web/index.html` resource -> plain requests get 426. Port taken -> bridge logs and stays off.
 
-Security: loopback only; only **picked** windows are published; WebSocket `Origin` must be loopback or in env var `CAPTURE_MANAGER_ALLOWED_ORIGINS`; non-browser clients (no Origin) allowed. Static site: GET/HEAD only, content only from embedded resources (no file system access, so no traversal), `nosniff`, `no-cache`; if the `web/index.html` resource is missing, plain requests get 426 as before. If the port is taken the bridge logs and stays off; the app keeps working.
-
-## Serving (`Domain/Services/StaticSiteResponder`)
-Reads resources named `web/<path>` from the Domain assembly (`GetManifestResourceStream`), so the single-file release needs no extra folder. SPA fallback: unknown path without extension returns `index.html`.
-
-## Build integration
-`CodescoveryCaptureManager.Domain.csproj` target `BuildWebUi` (before `AssignTargetPaths`): `npm ci` when `node_modules` is missing, `npm run build` (`tsc --noEmit && vite build`), then adds `dist/**` as `EmbeddedResource` with `LogicalName="web/<path>"` (backslashes normalized to `/`). Any project referencing Domain (App, Tests) therefore triggers the web build. Needs Node 22. `-p:SkipWebBuild=true` builds the desktop app without Node (a warning says the page will not be served). CI and release workflows run `actions/setup-node@v4` (22).
+## Serving and build
+- `StaticSiteResponder` reads resources `web/<path>` from the Domain assembly; unknown path without extension -> `index.html` (SPA).
+- `CodescoveryCaptureManager.Domain.csproj` target `BuildWebUi`: `npm ci` if needed, `npm run build` (`tsc --noEmit && vite build`), `dist/**` -> `EmbeddedResource` `LogicalName="web/<path>"` (backslashes normalized). Needs Node 22; `-p:SkipWebBuild=true` skips it (page then not served). CI/release run `actions/setup-node@v4`.
 
 ## Dev loop
 ```bash
 cd src/Web/CodescoveryCaptureManager.Web
 npm install
-npm run dev     # Vite on :5173, connects to the running desktop app at ws://127.0.0.1:47800
-npm test        # vitest: lib/focus.ts (parsing + matching)
+npm run dev     # Vite :5173, connects to the running desktop app at ws://127.0.0.1:47800
+npm test        # vitest: lib/focus.ts, lib/annexb.ts
 ```
-Allow the dev origin if needed: Vite on `127.0.0.1` is loopback, so it is accepted by default.
+
+## Verified / not verified
+Verified on this machine (hardware H.264 encoder found): app serves the page; stream reaches a Node client and a browser tab; browser decodes and draws (`1266x712 · 55 fps · 1.6 Mbps`, animation visible); blur -> page blanks; key frame roughly every second from the hardware encoder; 25 C# + 8 vitest tests. Frame cadence equals the source's (animated WinForms window, ~55 fps).
+Not verified: end-to-end latency in milliseconds (no pixel-timestamp harness), 4K / 120 Hz sources, the software-encoder fallback (no machine without a hardware encoder), multiple simultaneous viewers, `B-frame count` setting is rejected by this encoder (0x80070057, harmless).
 
 ## Limits
-- Browser cannot know the OS focus itself; without the desktop app the page is manual (badge says so).
-- Chrome/Edge desktop only; the user must approve each window; closing a source window ends its track (removed automatically).
-- Profiles are desktop-only (rules need process/title data the browser does not have).
+- Chrome/Edge desktop (WebCodecs); H.264 only.
+- Profiles are desktop-only.
 - Still polling: focus detection is the desktop 10 ms poll (`SetWinEventHook` = known-issues #11).
-- End to end capture + auto-switch with real windows not verified; verified: build, 10 unit tests, page served by the running app, WebSocket initial `{"focused":false}`, traversal blocked, UI renders and connects.

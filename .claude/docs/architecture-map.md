@@ -38,7 +38,8 @@ SelectCapturableWindows (picker, Windows/SelectCapturableWindows.xaml[.cs])
    └─ Apply (enabled only if something changed, Ctrl+Enter): add newly selected, remove deselected, one StopCapture + SyncWithForegroundWindow (shows a window only if it is really the foreground one). Ctrl+F focuses search
 
 Domain/Services
-   ├─ FocusBridgeService (internal, IFocusBridge): loopback WebSocket server serves the React web UI (embedded `web/*` resources) and publishes the focused picked window / blur to browser pages (see web-ui.md)
+   ├─ FocusBridgeService (internal, IFocusBridge): loopback WebSocket server serves the React web UI (embedded `web/*` resources), publishes the focused picked window / blur (text) and the H.264 video of the shown window (binary) to browser pages (see web-ui.md)
+   ├─ VideoStreamService (internal, IVideoStream/IFrameTap, Domain/Streaming): receives each captured frame from `CaptureService`, converts on the GPU (Nv12Converter), hardware-encodes H.264 (H264Encoder, Media Foundation) and raises `FrameEncoded` for the bridge; idle without viewers (see web-ui.md)
    ├─ WindowsProcessServices (internal, IWindowsProcessServices): EnumWindows → visible + titled + not ignored process
    ├─ CapturableWindowsMonitoringService (internal, ICapturableWindowsMonitoringService): Dictionary<HWND,CapturableWindow>, poll loop
    ├─ WindowCaptureService (public): Composition visual tree (root → sprite w/ surface brush + drop shadow), owns D3D device, current CaptureService

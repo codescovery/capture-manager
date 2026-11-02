@@ -37,6 +37,7 @@ Non-obvious things:
 - `App` creates a `DispatcherQueueController` (CoreMessaging.dll) on the UI thread; Composition needs it. Don't remove.
 - `Startup.ServiceProvider` is cached (one provider); Scoped services are effectively singletons from the root. `IProfileService`, `IFocusBridge` are singletons.
 - `CapturableWindowsMonitoringService` and `WindowsProcessServices` are `internal`; only reachable via DI interfaces. `WindowCaptureService` is public and `new`ed by the UI, not injected.
+- The web page is a viewer: `Domain/Streaming` hardware-encodes the shown window (H.264) and `FocusBridgeService` streams it (docs/web-ui.md). Media Foundation calls that SharpDX cannot do go through raw vtables in `MediaFoundationNative`; keep them off RCW marshaling (apartment problems).
 - Windows identified purely by HWND; no handling of closed/recreated windows yet (see known-issues).
 
 ## Doc index
