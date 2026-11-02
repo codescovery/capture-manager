@@ -1,6 +1,6 @@
 # Web UI (`src/Web/CodescoveryCaptureManager.Web`)
 
-React 18 + TypeScript + Vite app, part of the solution tree. The desktop app builds it and **serves it itself** at `http://127.0.0.1:47800/` (same server as the focus bridge). Open that URL in Chrome/Edge (use `127.0.0.1`, not `localhost`: `HttpListener` matches the Host header to its prefix; `127.0.0.1` is a secure context so `getDisplayMedia` works).
+React 18 + TypeScript + Vite app, part of the solution tree. The desktop app builds it, **embeds it in the Domain assembly** and **serves it itself** at `http://127.0.0.1:47800/` (same server as the focus bridge). Open that URL in Chrome/Edge (use `127.0.0.1`, not `localhost`: `HttpListener` matches the Host header to its prefix; `127.0.0.1` is a secure context so `getDisplayMedia` works).
 
 Replaces the old plain HTML/JS prototype in `web/` (removed).
 
@@ -26,13 +26,13 @@ Bridge sends `handle` (HWND) and `focusedTitle`. Chrome window tracks are labell
 - Focus message published from `MonitoredWindowFocused` (deduped by HWND); `{"focused":false}` from `MonitoredWindowsBlurred` (`IFocusBridge.PublishBlurred`, deduped). Initial state is blurred.
 - Old clients that only read `focusedTitle` keep working (legacy message had no `focused`/`handle`).
 
-Security: loopback only; only **picked** windows are published; WebSocket `Origin` must be loopback or in env var `CAPTURE_MANAGER_ALLOWED_ORIGINS`; non-browser clients (no Origin) allowed. Static site: GET/HEAD only, files only under `<app dir>/web`, path traversal blocked, `nosniff`, `no-cache`; if `web/index.html` is missing, plain requests get 426 as before. If the port is taken the bridge logs and stays off; the app keeps working.
+Security: loopback only; only **picked** windows are published; WebSocket `Origin` must be loopback or in env var `CAPTURE_MANAGER_ALLOWED_ORIGINS`; non-browser clients (no Origin) allowed. Static site: GET/HEAD only, content only from embedded resources (no file system access, so no traversal), `nosniff`, `no-cache`; if the `web/index.html` resource is missing, plain requests get 426 as before. If the port is taken the bridge logs and stays off; the app keeps working.
 
 ## Serving (`Domain/Services/StaticSiteResponder`)
-`FocusBridgeOptions.WebDirectoryName` (`web`) next to the exe. SPA fallback: unknown path without extension returns `index.html`.
+Reads resources named `web/<path>` from the Domain assembly (`GetManifestResourceStream`), so the single-file release needs no extra folder. SPA fallback: unknown path without extension returns `index.html`.
 
 ## Build integration
-`CodescoveryCaptureManager.App.csproj` target `BuildWebUi` (before `AssignTargetPaths`): `npm ci` when `node_modules` is missing, `npm run build` (`tsc --noEmit && vite build`), then copies `dist/**` to `web/` in the output and publish folders. Needs Node 22. `-p:SkipWebBuild=true` builds the desktop app without Node (a warning says the page will not be served). CI and release workflows run `actions/setup-node@v4` (22).
+`CodescoveryCaptureManager.Domain.csproj` target `BuildWebUi` (before `AssignTargetPaths`): `npm ci` when `node_modules` is missing, `npm run build` (`tsc --noEmit && vite build`), then adds `dist/**` as `EmbeddedResource` with `LogicalName="web/<path>"` (backslashes normalized to `/`). Any project referencing Domain (App, Tests) therefore triggers the web build. Needs Node 22. `-p:SkipWebBuild=true` builds the desktop app without Node (a warning says the page will not be served). CI and release workflows run `actions/setup-node@v4` (22).
 
 ## Dev loop
 ```bash

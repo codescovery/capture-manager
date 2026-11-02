@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Concurrent;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.WebSockets;
@@ -37,7 +36,7 @@ namespace CodescoveryCaptureManager.Domain.Services
         public FocusBridgeService(FocusBridgeOptions options)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
-            _site = new StaticSiteResponder(Path.Combine(AppContext.BaseDirectory, options.WebDirectoryName));
+            _site = new StaticSiteResponder(typeof(FocusBridgeService).Assembly);
         }
 
         public void Start()

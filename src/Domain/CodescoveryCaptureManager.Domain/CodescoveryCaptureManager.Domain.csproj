@@ -16,6 +16,22 @@
     <PackageReference Include="VirtualDesktop.WPF" Version="4.0.1" />
   </ItemGroup>
 
+  <PropertyGroup>
+    <WebProjectDir>$(MSBuildThisFileDirectory)..\..\Web\CodescoveryCaptureManager.Web\</WebProjectDir>
+    <WebDistDir>$(WebProjectDir)dist\</WebDistDir>
+  </PropertyGroup>
+
+  <!-- React UI embedded as resources `web/...`, served by FocusBridgeService. Pass -p:SkipWebBuild=true to build without Node. -->
+  <Target Name="BuildWebUi" BeforeTargets="AssignTargetPaths" Condition="'$(SkipWebBuild)' != 'true'">
+    <Exec Command="npm ci --no-audit --no-fund" WorkingDirectory="$(WebProjectDir)" Condition="!Exists('$(WebProjectDir)node_modules')" ContinueOnError="true" />
+    <Exec Command="npm run build" WorkingDirectory="$(WebProjectDir)" ContinueOnError="true" />
+    <ItemGroup>
+      <WebUiFile Include="$(WebDistDir)**\*" />
+      <EmbeddedResource Include="@(WebUiFile)" LogicalName="web/$([System.String]::new('%(RecursiveDir)').Replace('\','/'))%(Filename)%(Extension)" />
+    </ItemGroup>
+    <Warning Condition="'@(WebUiFile)' == ''" Text="Web UI not built (is Node installed?). The desktop app works, but http://127.0.0.1:47800/ will not serve a page." />
+  </Target>
+
   <ItemGroup>
     <Folder Include="Constants\" />
   </ItemGroup>

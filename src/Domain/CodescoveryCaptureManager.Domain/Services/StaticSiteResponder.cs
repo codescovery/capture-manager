@@ -2,13 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace CodescoveryCaptureManager.Domain.Services
 {
-    /// <summary>Serves the built web UI (read-only, GET/HEAD) from a directory next to the executable.</summary>
+    /// <summary>Serves the built web UI (read-only, GET/HEAD) from resources embedded in this assembly.</summary>
     internal sealed class StaticSiteResponder
     {
+        private const string ResourcePrefix = "web/";
         private const string IndexFile = "index.html";
 
         private static readonly IReadOnlyDictionary<string, string> ContentTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -24,14 +26,14 @@ namespace CodescoveryCaptureManager.Domain.Services
             [".map"] = "application/json; charset=utf-8",
         };
 
-        private readonly string _rootDirectory;
+        private readonly Assembly _assembly;
 
-        public StaticSiteResponder(string rootDirectory)
+        public StaticSiteResponder(Assembly assembly)
         {
-            _rootDirectory = Path.GetFullPath(rootDirectory);
+            _assembly = assembly ?? throw new ArgumentNullException(nameof(assembly));
         }
 
-        public bool IsAvailable => File.Exists(Path.Combine(_rootDirectory, IndexFile));
+        public bool IsAvailable => Exists(ResourcePrefix + IndexFile);
 
         public async Task RespondAsync(HttpListenerContext context)
         {
@@ -54,40 +56,47 @@ namespace CodescoveryCaptureManager.Domain.Services
                 return;
             }
 
-            var filePath = ResolveFile(request.Url.AbsolutePath);
-            if (filePath == null)
+            var resourceName = ResolveResource(request.Url.AbsolutePath);
+            if (resourceName == null)
             {
                 response.StatusCode = (int)HttpStatusCode.NotFound;
                 return;
             }
 
-            await WriteFileAsync(request, response, filePath);
+            await WriteResourceAsync(request, response, resourceName);
         }
 
         private static bool IsReadMethod(string method)
             => method == "GET" || method == "HEAD";
 
-        private string ResolveFile(string urlPath)
+        private string ResolveResource(string urlPath)
         {
             var relative = Uri.UnescapeDataString(urlPath).TrimStart('/');
-            var candidate = Path.GetFullPath(Path.Combine(_rootDirectory, relative.Length == 0 ? IndexFile : relative));
-            if (!IsInsideRoot(candidate)) return null;
-            if (File.Exists(candidate)) return candidate;
-            return Path.HasExtension(candidate) ? null : Path.Combine(_rootDirectory, IndexFile);
+            if (!IsSafeRelativePath(relative)) return null;
+
+            var name = ResourcePrefix + (relative.Length == 0 ? IndexFile : relative);
+            if (Exists(name)) return name;
+            return Path.HasExtension(relative) ? null : ResourcePrefix + IndexFile;
         }
 
-        private bool IsInsideRoot(string fullPath)
-            => fullPath.StartsWith(_rootDirectory + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        private static bool IsSafeRelativePath(string relative)
+            => relative.IndexOf('\\') < 0 && Array.IndexOf(relative.Split('/'), "..") < 0;
 
-        private static async Task WriteFileAsync(HttpListenerRequest request, HttpListenerResponse response, string filePath)
+        private bool Exists(string resourceName)
         {
-            var bytes = await File.ReadAllBytesAsync(filePath);
-            response.ContentType = ContentTypes.TryGetValue(Path.GetExtension(filePath), out var type) ? type : "application/octet-stream";
-            response.ContentLength64 = bytes.Length;
+            using var stream = _assembly.GetManifestResourceStream(resourceName);
+            return stream != null;
+        }
+
+        private async Task WriteResourceAsync(HttpListenerRequest request, HttpListenerResponse response, string resourceName)
+        {
+            using var stream = _assembly.GetManifestResourceStream(resourceName);
+            response.ContentType = ContentTypes.TryGetValue(Path.GetExtension(resourceName), out var type) ? type : "application/octet-stream";
+            response.ContentLength64 = stream.Length;
             response.Headers["X-Content-Type-Options"] = "nosniff";
             response.Headers["Cache-Control"] = "no-cache";
             if (request.HttpMethod == "HEAD") return;
-            await response.OutputStream.WriteAsync(bytes, 0, bytes.Length);
+            await stream.CopyToAsync(response.OutputStream);
         }
     }
 }
