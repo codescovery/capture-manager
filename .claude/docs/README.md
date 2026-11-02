@@ -1,0 +1,14 @@
+# Docs index
+
+Source of truth for agents. Update when code changes.
+
+| Doc | Content |
+|-----|---------|
+| [architecture-map.md](architecture-map.md) | Projects, components, runtime flows, threading, DI, interop |
+| [known-issues.md](known-issues.md) | Bugs, fragilities, resilience gaps, ordered by priority |
+| [decisions.md](decisions.md) | Design decisions and rationale (append-only log) |
+| [release-and-distribution.md](release-and-distribution.md) | CI, tag-driven release, winget/choco packaging, auto-update status |
+| [web-prototype.md](web-prototype.md) | Browser version (`web/`), limits, focus-bridge protocol |
+
+## Maintenance rule
+Each feature/change: check these docs, edit or add. New topic -> new file + row here. Keep `known-issues.md` current: remove items when fixed (note in `decisions.md` if the fix changed design).
