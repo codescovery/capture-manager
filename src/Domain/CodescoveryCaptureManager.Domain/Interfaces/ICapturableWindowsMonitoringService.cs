@@ -17,5 +17,8 @@ namespace CodescoveryCaptureManager.Domain.Interfaces
         
         delegate void MonitoredWindowFocus(CapturableWindow activeCapturableWindow);
         event MonitoredWindowFocus MonitoredWindowFocused;
+
+        delegate void MonitoredWindowClosure(CapturableWindow closedCapturableWindow);
+        event MonitoredWindowClosure MonitoredWindowClosed;
     }
 }

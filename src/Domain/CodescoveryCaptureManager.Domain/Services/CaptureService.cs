@@ -1,4 +1,5 @@
-﻿using Windows.Graphics;
+﻿using System;
+using Windows.Graphics;
 using Windows.Graphics.Capture;
 using Windows.Graphics.DirectX;
 using Windows.Graphics.DirectX.Direct3D11;
@@ -13,6 +14,8 @@ namespace CodescoveryCaptureManager.Domain.Services
         private readonly Direct3D11CaptureFramePool _framePool;
         private readonly GraphicsCaptureSession _session;
         private SizeInt32 _lastSize;
+        private readonly object _sync = new object();
+        private bool _disposed;
 
         private readonly IDirect3DDevice _device;
         private readonly SharpDX.Direct3D11.Device _d3dDevice;
@@ -58,10 +61,16 @@ namespace CodescoveryCaptureManager.Domain.Services
 
         public void Dispose()
         {
-            _session?.Dispose();
-            _framePool?.Dispose();
-            _swapChain?.Dispose();
-            _d3dDevice?.Dispose();
+            lock (_sync)
+            {
+                if (_disposed) return;
+                _disposed = true;
+                _framePool.FrameArrived -= OnFrameArrived;
+                _session?.Dispose();
+                _framePool?.Dispose();
+                _swapChain?.Dispose();
+                _d3dDevice?.Dispose();
+            }
         }
 
         public void StartCapture()
@@ -76,10 +85,28 @@ namespace CodescoveryCaptureManager.Domain.Services
 
         private void OnFrameArrived(Direct3D11CaptureFramePool sender, object args)
         {
+            lock (_sync)
+            {
+                if (_disposed) return;
+                try
+                {
+                    ProcessFrame(sender);
+                }
+                catch (Exception ex)
+                {
+                    // Target window may have closed or the device been lost mid-frame.
+                    Console.WriteLine($"Frame processing failed. {ex.Message}");
+                }
+            }
+        }
+
+        private void ProcessFrame(Direct3D11CaptureFramePool sender)
+        {
             var newSize = false;
 
             using (var frame = sender.TryGetNextFrame())
             {
+                if (frame == null) return;
                 if (frame.ContentSize.Width != _lastSize.Width ||
                     frame.ContentSize.Height != _lastSize.Height)
                 {

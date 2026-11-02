@@ -83,6 +83,7 @@ namespace CodescoveryCaptureManager.Domain.Services
             _activeCapturableWindowInteropHandle = IntPtr.Zero;
             _isCapturing = false;
             _captureService?.Dispose();
+            _captureService = null;
             _brush.Surface = null;
         }
         public void Dispose()

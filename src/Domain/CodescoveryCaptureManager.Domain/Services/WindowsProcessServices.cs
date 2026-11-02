@@ -28,15 +28,24 @@ namespace CodescoveryCaptureManager.Domain.Services
                     return true;
 
                 var title = CreateNewTitleStringBuilder();
+                
                 GetWindowText(processHandle, title);
                 if (IgnoreItemBecauseTitleIsNull(title))
                     return true;
 
                 if (IsProcessInIgnoredList(ignoredWindows, processHandle)) return true;
-                
-                var processId = GetWindowThreadProcessId(processHandle);
-                if (IgnoreProcessByName(processId, out var process)) return true;
-                AddProcessToCapturableWindowsList(capturableWindows, processHandle, title, process);
+
+                try
+                {
+                    var processId = GetWindowThreadProcessId(processHandle);
+                    if (IgnoreProcessByName(processId, out var process)) return true;
+                    AddProcessToCapturableWindowsList(capturableWindows, processHandle, title, process);
+                }
+                catch (Exception ex)
+                {
+                    // Process exited or is inaccessible: skip this window, keep enumerating.
+                    Console.WriteLine($"Skipping window {processHandle}. {ex.Message}");
+                }
 
                 return true;
             }, IntPtr.Zero);
