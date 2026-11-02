@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+env:
+  REPO_URL: https://github.com/codescovery/captureManager
+  PACK_ID: CodescoveryCaptureManager
+  VPK_VERSION: 1.2.161
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+      CHOCO_API_KEY: ${{ secrets.CHOCO_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          "value=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Install vpk
+        run: dotnet tool install --global vpk --version ${{ env.VPK_VERSION }}
+
+      - name: Publish (self-contained, single file)
+        run: >
+          dotnet publish src/Presentation/CodescoveryCaptureManager.App
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -p:Version=${{ steps.version.outputs.value }}
+          --output artifacts/publish
+
+      - name: Download previous release (for delta packages)
+        continue-on-error: true
+        run: vpk download github --repoUrl ${{ env.REPO_URL }} --token ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pack
+        run: >
+          vpk pack
+          --packId ${{ env.PACK_ID }}
+          --packVersion ${{ steps.version.outputs.value }}
+          --packDir artifacts/publish
+          --mainExe CodescoveryCaptureManager.App.exe
+          --packTitle "Codescovery Capture Manager"
+          --icon src/Presentation/CodescoveryCaptureManager.App/Assets/icon.ico
+
+      - name: Upload to GitHub release
+        run: >
+          vpk upload github
+          --repoUrl ${{ env.REPO_URL }}
+          --token ${{ secrets.GITHUB_TOKEN }}
+          --publish
+          --releaseName "v${{ steps.version.outputs.value }}"
+          --tag ${{ github.ref_name }}
+
+      - name: Setup checksum
+        id: setup
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash "Releases/${{ env.PACK_ID }}-win-Setup.exe" -Algorithm SHA256).Hash
+          "sha256=$hash" >> $env:GITHUB_OUTPUT
+
+      - name: Chocolatey pack and push
+        if: ${{ env.CHOCO_API_KEY != '' }}
+        shell: pwsh
+        run: |
+          $dir = 'packaging/chocolatey'
+          $nuspec = "$dir/codescovery-capture-manager.nuspec"
+          $install = "$dir/tools/chocolateyinstall.ps1"
+          (Get-Content $nuspec -Raw).Replace('__VERSION__', '${{ steps.version.outputs.value }}') | Set-Content $nuspec
+          (Get-Content $install -Raw).Replace('__VERSION__', '${{ steps.version.outputs.value }}').Replace('__SHA256__', '${{ steps.setup.outputs.sha256 }}') | Set-Content $install
+          choco pack $nuspec --outputdirectory artifacts
+          choco push "artifacts/codescovery-capture-manager.${{ steps.version.outputs.value }}.nupkg" --source https://push.chocolatey.org/ --api-key $env:CHOCO_API_KEY
+
+      - name: Winget update
+        if: ${{ env.WINGET_TOKEN != '' }}
+        uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: Codescovery.CaptureManager
+          installers-regex: 'Setup\.exe$'
+          token: ${{ env.WINGET_TOKEN }}

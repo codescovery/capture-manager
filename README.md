@@ -10,7 +10,7 @@ The application will capture the user selected windows and display the one in fo
 - Move CodescoveryCaptureManager to a VirtualDesktop if enabled;
 
 ## Installation Pre Requisites
-- .Net Core 3.1 Runtime(https://dotnet.microsoft.com/download/dotnet/3.1)
+- None (self-contained)
 
 ## Project NugetPackages Dependecies
 - [SharpDX.D3DCompiler]
@@ -20,9 +20,8 @@ The application will capture the user selected windows and display the one in fo
 
 ## Installation
 
-CodescoveryCaptureManager requires [.NetCore 3.1 Runtime](https://dotnet.microsoft.com/download/dotnet/3.1) to run.
-Download the desired release and extract to anywhere you want.
-Run CodescoveryCaptureManager.App.exe
+Download the latest release from GitHub, winget (`winget install Codescovery.CaptureManager`) or Chocolatey (`choco install codescovery-capture-manager`) once published.
+Run CodescoveryCaptureManager-win-Setup.exe from the latest release (self-contained, no .NET install needed; updates itself). A portable zip is available as fallback without auto-update.
 
 ## Displaying in OBS
 After selecting the windows. You should go to OBS and and a new WindowCaptureSource.

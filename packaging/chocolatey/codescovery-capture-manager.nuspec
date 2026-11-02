@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>codescovery-capture-manager</id>
+    <version>__VERSION__</version>
+    <title>Codescovery Capture Manager</title>
+    <authors>Vinicius Andrade</authors>
+    <owners>Codescovery</owners>
+    <projectUrl>https://github.com/codescovery/captureManager</projectUrl>
+    <licenseUrl>https://github.com/codescovery/captureManager/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <tags>capture streaming obs windows wpf</tags>
+    <summary>Share one app window that shows only the focused window you picked.</summary>
+    <description>Pick which windows to expose and share this single app window in Teams, OBS and similar tools instead of the whole screen.</description>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
