@@ -15,11 +15,13 @@ CodescoveryCaptureManager: Windows WPF app for streamers/presenters. User picks 
 
 ## Commands
 
-Run from `src/`. Solution: `Codescovery.CaptureManager.sln`. Target `net10.0-windows10.0.19041.0`, Windows only (WPF, CsWinRT-projected WinRT, user32); needs .NET 10 SDK. No test projects, no linter; CI = `.github/workflows/ci.yml` (build only).
+Run from `src/`. Solution: `Codescovery.CaptureManager.sln`. Target `net10.0-windows10.0.19041.0`, Windows only (WPF, CsWinRT-projected WinRT, user32); needs .NET 10 SDK. xUnit tests in `src/Tests` (profile logic), no linter; CI = `.github/workflows/ci.yml` (build + test). A running app instance locks `bin\Debug` DLLs: close it before building. UI behaviour is checked with the UI Automation scripts in `.claude/scripts` (see docs/e2e-testing.md).
 
 ```bash
 dotnet restore src/Codescovery.CaptureManager.sln
 dotnet build   src/Codescovery.CaptureManager.sln
+dotnet test    src/Codescovery.CaptureManager.sln
+dotnet test    src/Tests/CodescoveryCaptureManager.Domain.Tests --filter "FullyQualifiedName~WindowRuleMatcherTests"   # single test class
 dotnet run --project src/Presentation/CodescoveryCaptureManager.App
 ```
 
@@ -33,7 +35,7 @@ Core flow: `SelectCapturableWindows` picker -> `ICapturableWindowsMonitoringServ
 
 Non-obvious things:
 - `App` creates a `DispatcherQueueController` (CoreMessaging.dll) on the UI thread; Composition needs it. Don't remove.
-- `Startup.ServiceProvider` builds a **new** provider on every access; "Scoped" services are effectively per-access. Only resolved once today.
+- `Startup.ServiceProvider` is cached (one provider); Scoped services are effectively singletons from the root. `IProfileService`, `IFocusBridge` are singletons.
 - `CapturableWindowsMonitoringService` and `WindowsProcessServices` are `internal`; only reachable via DI interfaces. `WindowCaptureService` is public and `new`ed by the UI, not injected.
 - Windows identified purely by HWND; no handling of closed/recreated windows yet (see known-issues).
 

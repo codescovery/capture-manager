@@ -16,5 +16,5 @@ Fixed 2026-11-02 (see decisions.md): monitoring loop try/catch + observed task, 
 11. 10 ms polling of foreground window; could use `SetWinEventHook(EVENT_SYSTEM_FOREGROUND)`.
 13. No MVVM: code-behind drives both windows (picker uses a small item view-model only).
 15. `src/.vs`, `src/.idea`, `*.csproj.user` tracked in git (check .gitignore).
-16. No tests; auto-update untested (Velopack wired but untested end to end: see release-and-distribution.md).
-17. Focus fallback choice (message / keep last / fixed window) is not persisted; resets to message on restart.
+16. Few tests (xUnit only for profiles; UI via UIA scripts); auto-update untested (Velopack wired but untested end to end: see release-and-distribution.md).
+17. Profiles: no live rebind yet (windows opened after Apply are not attached until re-applied), no manage/rename/edit dialog, no import/export. Fixed-window fallback is not persisted.

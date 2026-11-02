@@ -42,8 +42,14 @@ Domain/Services
    ├─ WindowsProcessServices (internal, IWindowsProcessServices): EnumWindows → visible + titled + not ignored process
    ├─ CapturableWindowsMonitoringService (internal, ICapturableWindowsMonitoringService): Dictionary<HWND,CapturableWindow>, poll loop
    ├─ WindowCaptureService (public): Composition visual tree (root → sprite w/ surface brush + drop shadow), owns D3D device, current CaptureService
-   └─ CaptureService (internal): GraphicsCaptureItem + Direct3D11CaptureFramePool + SharpDX SwapChain1; copies frame → back buffer → Present; resizes on content size change
+   ├─ CaptureService (internal): GraphicsCaptureItem + Direct3D11CaptureFramePool + SharpDX SwapChain1; copies frame → back buffer → Present; resizes on content size change
+   └─ ProfileService (internal, IProfileService, singleton) + JsonProfileStore (IProfileStore): saved window sets as rules; see profiles.md
+
+Domain/Profiles: WindowRule, CaptureProfile, AppSettings, WindowRuleMatcher (pure), WindowRuleFactory, WindowTitles
+Tests: Tests/CodescoveryCaptureManager.Domain.Tests (xUnit; matcher, factory, store, service). CI runs them.
 ```
+
+UI for profiles: toolbar **Profiles** button (ContextMenu rebuilt on open: profiles, "Save current windows as profile…", "Delete profile ▸"); picker footer "Save as profile…"; `SaveProfileDialog` (+ `RuleRow` edit model). Applying a profile = `ProfileService.Apply` (replace monitored set) then StopCapture + SyncWithForegroundWindow. Picker Apply clears the active profile (manual selection). Active profile + fallback mode (message/keep last) persist in settings.json and the last profile is re-applied on start (`CapturedWindows_OnLoaded`).
 
 ## 4. Runtime flows
 

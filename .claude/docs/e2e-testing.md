@@ -2,7 +2,7 @@
 
 `.claude/scripts/e2e-focus.ps1` drives the real app through Windows UI Automation (UIA): opens Notepad + the app, opens the picker, selects Notepad by search, Apply, then switches the foreground window and reads which overlay the capture window shows.
 
-Run (Debug build, no other app instance running, Edge open):
+Run (Debug build, no other app instance running, Edge open for the focus script):
 
 ```bash
 dotnet build src/Codescovery.CaptureManager.sln
@@ -20,3 +20,10 @@ Expected output: `0) … BLANK + NoFocus message` (nothing shown right after App
 - Moving focus needs an Alt key tap before `SetForegroundWindow` (foreground lock).
 - Make the script DPI aware (`SetProcessDPIAware`) before using UIA rectangles for real mouse clicks; the app may sit on a monitor with negative coordinates.
 - A running app instance locks `bin\Debug` DLLs; build with `-p:OutDir=<other dir>` or close the app first. Stale instances caused a false "still captures unfocused windows" report once.
+
+## Scripts
+- `e2e-focus.ps1`: focus-follow, blank-on-unpicked, fallback modes (self-contained).
+- `e2e-profiles.ps1`: save profile from picker, menu, `profiles.json`, restore + auto-apply after restart. Uses `CAPTURE_MANAGER_DATA_DIR` so real profiles are untouched.
+- `e2e-lib.ps1`: shared UIA helpers (`Start-TestApp`, `Open-Picker-And-Select`, `Overlay-State`, `Get-Menu-Items`, …) for new scripts.
+
+Unit tests: `dotnet test src/Codescovery.CaptureManager.sln` (xUnit, `src/Tests`).
