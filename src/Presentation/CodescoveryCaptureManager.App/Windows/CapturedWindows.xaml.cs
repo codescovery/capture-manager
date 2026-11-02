@@ -38,6 +38,7 @@ namespace CodescoveryCaptureManager.App.Windows
         private readonly VirtualDesktop _mainVirtualDesktop;
         private bool _isMenuExpanded = true;
         private readonly IFocusBridge _focusBridge;
+        private readonly IVideoStream _videoStream;
         private FocusFallbackMode _fallbackMode = FocusFallbackMode.Message;
         private IntPtr _fallbackWindowHandle;
 
@@ -45,13 +46,14 @@ namespace CodescoveryCaptureManager.App.Windows
 
         private readonly IProfileService _profileService;
 
-        public CapturedWindows(ICapturableWindowsMonitoringService capturableWindowsMonitoringService, IWindowsProcessServices windowsProcessServices, IFocusBridge focusBridge, IProfileService profileService)
+        public CapturedWindows(ICapturableWindowsMonitoringService capturableWindowsMonitoringService, IWindowsProcessServices windowsProcessServices, IFocusBridge focusBridge, IProfileService profileService, IVideoStream videoStream)
         {
 
             InitializeComponent();
             _capturableWindowsMonitoringService = capturableWindowsMonitoringService;
             _windowsProcessServices = windowsProcessServices;
             _focusBridge = focusBridge;
+            _videoStream = videoStream;
             _profileService = profileService;
             _fallbackMode = Enum.TryParse<FocusFallbackMode>(_profileService.Settings.FallbackMode, out var savedMode) && savedMode != FocusFallbackMode.FixedWindow
                 ? savedMode
@@ -60,7 +62,7 @@ namespace CodescoveryCaptureManager.App.Windows
             _focusBridge.Start();
             _compositor = new Compositor();
             _containerVisual = InitializeContainerVisual();
-            _windowCaptureService = new WindowCaptureService(_compositor);
+            _windowCaptureService = new WindowCaptureService(_compositor, _videoStream);
             _mainVirtualDesktop = GetMainVirtualDesktop();
             //HandleFooterMargin();
             SwitchMenuExpanderIcon();

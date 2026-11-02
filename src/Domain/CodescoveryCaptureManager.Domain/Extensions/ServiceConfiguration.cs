@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using CodescoveryCaptureManager.Domain.Interfaces;
 using CodescoveryCaptureManager.Domain.Services;
+using CodescoveryCaptureManager.Domain.Streaming;
 using CodescoveryCaptureManager.Domain.Structs;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -16,6 +17,7 @@ namespace CodescoveryCaptureManager.Domain.Extensions
         public static IServiceCollection AddFocusBridge(this IServiceCollection services)
         {
             services.AddSingleton(_ => FocusBridgeOptions.FromEnvironment());
+            services.AddSingleton<IVideoStream, VideoStreamService>();
             return services.InjectService<IFocusBridge, FocusBridgeService>(ServiceLifetime.Singleton);
         }
 

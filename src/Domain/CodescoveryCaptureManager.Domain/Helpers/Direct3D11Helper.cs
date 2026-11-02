@@ -16,9 +16,17 @@ namespace CodescoveryCaptureManager.Domain.Helpers
         {
             var d3dDevice = new SharpDX.Direct3D11.Device(
                 useWARP ? SharpDX.Direct3D.DriverType.Software : SharpDX.Direct3D.DriverType.Hardware,
-                SharpDX.Direct3D11.DeviceCreationFlags.BgraSupport);
+                SharpDX.Direct3D11.DeviceCreationFlags.BgraSupport | SharpDX.Direct3D11.DeviceCreationFlags.VideoSupport);
+            EnableMultithreadProtection(d3dDevice);
             var device = CreateDirect3DDeviceFromSharpDXDevice(d3dDevice);
             return device;
+        }
+
+        // The capture thread and the encoder threads share this device.
+        private static void EnableMultithreadProtection(SharpDX.Direct3D11.Device d3dDevice)
+        {
+            using var multithread = d3dDevice.QueryInterface<SharpDX.Direct3D11.Multithread>();
+            multithread.SetMultithreadProtected(true);
         }
 
         public static IDirect3DDevice CreateDirect3DDeviceFromSharpDXDevice(SharpDX.Direct3D11.Device d3dDevice)

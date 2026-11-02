@@ -4,6 +4,7 @@ using Windows.Graphics.Capture;
 using Windows.Graphics.DirectX.Direct3D11;
 using Windows.UI.Composition;
 using CodescoveryCaptureManager.Domain.Helpers;
+using CodescoveryCaptureManager.Domain.Interfaces;
 
 namespace CodescoveryCaptureManager.Domain.Services
 {
@@ -14,6 +15,7 @@ namespace CodescoveryCaptureManager.Domain.Services
         private readonly CompositionSurfaceBrush _brush;
         private readonly SpriteVisual _content;
         private readonly IDirect3DDevice _device;
+        private readonly IFrameTap _frameTap;
         private CaptureService _captureService;
         private bool _isCapturing;
         private IntPtr _activeCapturableWindowInteropHandle;
@@ -23,8 +25,9 @@ namespace CodescoveryCaptureManager.Domain.Services
             => activeCapturableWindowInteropHandle.Equals(_activeCapturableWindowInteropHandle) && IsCapturing();
 
         public Visual GetVisual() => _root;
-        public WindowCaptureService(Compositor compositor)
+        public WindowCaptureService(Compositor compositor, IFrameTap frameTap = null)
         {
+            _frameTap = frameTap;
             _isCapturing = false;
             _compositor = compositor;
             _activeCapturableWindowInteropHandle = IntPtr.Zero;
@@ -73,7 +76,7 @@ namespace CodescoveryCaptureManager.Domain.Services
             StopCapture();
             _isCapturing = true;
             _activeCapturableWindowInteropHandle = activeWindowCaptureHandle;
-            _captureService = new CaptureService(_device, item);
+            _captureService = new CaptureService(_device, item, _frameTap);
             _brush.Surface = _captureService.CreateSurface(_compositor);
             _captureService.StartCapture();
         }

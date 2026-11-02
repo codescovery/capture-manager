@@ -9,33 +9,38 @@ using System.Threading;
 using System.Threading.Tasks;
 using CodescoveryCaptureManager.Domain.Interfaces;
 using CodescoveryCaptureManager.Domain.Interop;
+using CodescoveryCaptureManager.Domain.Streaming;
 using CodescoveryCaptureManager.Domain.Structs;
 
 namespace CodescoveryCaptureManager.Domain.Services
 {
     /// <summary>
-    /// Loopback WebSocket server that tells browser pages which picked window is in focus.
+    /// Loopback WebSocket server for browser pages: serves the web UI, tells which picked window is focused
+    /// (text frames) and streams that window as H.264 (binary frames).
     /// Only windows the user picked are ever published, and only to allowed origins.
     /// </summary>
     internal sealed class FocusBridgeService : IFocusBridge
     {
         private const int TitleBufferSize = 1024;
+        private const byte VideoFrameType = 1;
+        private const byte KeyFrameFlag = 1;
 
-        private readonly FocusBridgeOptions _options;
-        private readonly HttpListener _listener = new HttpListener();
-        private readonly ConcurrentDictionary<Guid, WebSocket> _clients = new ConcurrentDictionary<Guid, WebSocket>();
-        private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
-        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         private static readonly string BlurredMessage = JsonSerializer.Serialize(new { focused = false });
 
+        private readonly FocusBridgeOptions _options;
+        private readonly IVideoStream _videoStream;
         private readonly StaticSiteResponder _site;
+        private readonly HttpListener _listener = new HttpListener();
+        private readonly ConcurrentDictionary<Guid, ClientConnection> _clients = new ConcurrentDictionary<Guid, ClientConnection>();
+        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         private IntPtr _lastPublishedHandle = IntPtr.Zero;
         private volatile string _lastMessage = BlurredMessage;
         private bool _started;
 
-        public FocusBridgeService(FocusBridgeOptions options)
+        public FocusBridgeService(FocusBridgeOptions options, IVideoStream videoStream)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
+            _videoStream = videoStream ?? throw new ArgumentNullException(nameof(videoStream));
             _site = new StaticSiteResponder(typeof(FocusBridgeService).Assembly);
         }
 
@@ -48,6 +53,7 @@ namespace CodescoveryCaptureManager.Domain.Services
                 _listener.Prefixes.Add($"http://127.0.0.1:{_options.Port}/");
                 _listener.Start();
                 _started = true;
+                _videoStream.FrameEncoded += OnFrameEncoded;
                 _ = AcceptLoopAsync(_cancellationTokenSource.Token);
             }
             catch (Exception ex)
@@ -62,7 +68,8 @@ namespace CodescoveryCaptureManager.Domain.Services
 
             _lastPublishedHandle = focusedWindow.Handle;
             _lastMessage = BuildMessage(focusedWindow);
-            _ = BroadcastAsync(_lastMessage);
+            _videoStream.RequestKeyFrame();
+            _ = BroadcastTextAsync(_lastMessage);
         }
 
         public void PublishBlurred()
@@ -71,7 +78,7 @@ namespace CodescoveryCaptureManager.Domain.Services
 
             _lastPublishedHandle = IntPtr.Zero;
             _lastMessage = BlurredMessage;
-            _ = BroadcastAsync(_lastMessage);
+            _ = BroadcastTextAsync(_lastMessage);
         }
 
         private static string BuildMessage(CapturableWindow window)
@@ -189,61 +196,141 @@ namespace CodescoveryCaptureManager.Domain.Services
         private async Task ServeClientAsync(WebSocket socket, CancellationToken cancellationToken)
         {
             var clientId = Guid.NewGuid();
-            _clients[clientId] = socket;
+            var client = new ClientConnection(socket);
+            _clients[clientId] = client;
+            _videoStream.SetViewerCount(_clients.Count);
             try
             {
-                await SendAsync(socket, _lastMessage, cancellationToken);
+                await client.SendTextAsync(_lastMessage, cancellationToken);
+                _videoStream.RequestKeyFrame();
                 await DrainUntilClosedAsync(socket, cancellationToken);
             }
             finally
             {
                 _clients.TryRemove(clientId, out _);
-                socket.Dispose();
+                _videoStream.SetViewerCount(_clients.Count);
+                client.Dispose();
             }
         }
 
-        private static async Task DrainUntilClosedAsync(WebSocket socket, CancellationToken cancellationToken)
+        // The only message a page may send: "key" = I lost frames, send a key frame.
+        private async Task DrainUntilClosedAsync(WebSocket socket, CancellationToken cancellationToken)
         {
             var buffer = new byte[256];
             while (socket.State == WebSocketState.Open)
             {
                 var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
                 if (result.MessageType == WebSocketMessageType.Close) return;
+                if (IsKeyFrameRequest(buffer, result)) _videoStream.RequestKeyFrame();
             }
         }
 
-        private async Task BroadcastAsync(string message)
+        private static bool IsKeyFrameRequest(byte[] buffer, WebSocketReceiveResult result)
+            => result.MessageType == WebSocketMessageType.Text && result.Count == 3 && Encoding.ASCII.GetString(buffer, 0, 3) == "key";
+
+        private async Task BroadcastTextAsync(string message)
         {
-            var openClients = _clients.Values.Where(client => client.State == WebSocketState.Open).ToList();
+            var openClients = _clients.Values.Where(client => client.IsOpen).ToList();
             foreach (var client in openClients)
-                await SendAsync(client, message, _cancellationTokenSource.Token);
+                await client.SendTextAsync(message, _cancellationTokenSource.Token);
         }
 
-        private async Task SendAsync(WebSocket socket, string message, CancellationToken cancellationToken)
+        private void OnFrameEncoded(EncodedFrame frame)
         {
-            if (message == null || socket.State != WebSocketState.Open) return;
+            var payload = BuildVideoPayload(frame);
+            foreach (var client in _clients.Values)
+                if (!client.TrySendVideo(payload, frame.IsKeyFrame, _cancellationTokenSource.Token))
+                    _videoStream.RequestKeyFrame();
+        }
 
-            await _sendLock.WaitAsync(cancellationToken);
-            try
-            {
-                var payload = Encoding.UTF8.GetBytes(message);
-                await socket.SendAsync(new ArraySegment<byte>(payload), WebSocketMessageType.Text, true, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Focus bridge send failed. {ex.Message}");
-            }
-            finally
-            {
-                _sendLock.Release();
-            }
+        private static byte[] BuildVideoPayload(EncodedFrame frame)
+        {
+            var payload = new byte[frame.Data.Length + 2];
+            payload[0] = VideoFrameType;
+            payload[1] = frame.IsKeyFrame ? KeyFrameFlag : (byte)0;
+            Buffer.BlockCopy(frame.Data, 0, payload, 2, frame.Data.Length);
+            return payload;
         }
 
         public void Dispose()
         {
             _cancellationTokenSource.Cancel();
+            _videoStream.FrameEncoded -= OnFrameEncoded;
             if (_started) _listener.Close();
+            foreach (var client in _clients.Values) client.Dispose();
             _cancellationTokenSource.Dispose();
+        }
+
+        /// <summary>One browser connection. Text messages are queued in order; video drops frames instead of queueing.</summary>
+        private sealed class ClientConnection : IDisposable
+        {
+            private readonly WebSocket _socket;
+            private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
+            private volatile bool _needsKeyFrame = true;
+
+            public ClientConnection(WebSocket socket)
+            {
+                _socket = socket;
+            }
+
+            public bool IsOpen => _socket.State == WebSocketState.Open;
+
+            public async Task SendTextAsync(string message, CancellationToken cancellationToken)
+            {
+                if (message == null || !IsOpen) return;
+
+                await _sendLock.WaitAsync(cancellationToken);
+                try
+                {
+                    var payload = Encoding.UTF8.GetBytes(message);
+                    await _socket.SendAsync(new ArraySegment<byte>(payload), WebSocketMessageType.Text, true, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Focus bridge send failed. {ex.Message}");
+                }
+                finally
+                {
+                    _sendLock.Release();
+                }
+            }
+
+            /// <returns>False when this client lost frames and needs a new key frame.</returns>
+            public bool TrySendVideo(byte[] payload, bool isKeyFrame, CancellationToken cancellationToken)
+            {
+                if (!IsOpen) return true;
+                if (_needsKeyFrame && !isKeyFrame) return false;
+                if (!_sendLock.Wait(0))
+                {
+                    _needsKeyFrame = true;
+                    return false;
+                }
+
+                _needsKeyFrame = false;
+                _ = SendVideoAsync(payload, cancellationToken);
+                return true;
+            }
+
+            private async Task SendVideoAsync(byte[] payload, CancellationToken cancellationToken)
+            {
+                try
+                {
+                    await _socket.SendAsync(new ArraySegment<byte>(payload), WebSocketMessageType.Binary, true, cancellationToken);
+                }
+                catch (Exception)
+                {
+                    _needsKeyFrame = true;
+                }
+                finally
+                {
+                    _sendLock.Release();
+                }
+            }
+
+            public void Dispose()
+            {
+                _socket.Dispose();
+            }
         }
     }
 }

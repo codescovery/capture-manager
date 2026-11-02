@@ -5,6 +5,7 @@ using Windows.Graphics.DirectX;
 using Windows.Graphics.DirectX.Direct3D11;
 using Windows.UI.Composition;
 using CodescoveryCaptureManager.Domain.Helpers;
+using CodescoveryCaptureManager.Domain.Interfaces;
 
 namespace CodescoveryCaptureManager.Domain.Services
 {
@@ -20,9 +21,11 @@ namespace CodescoveryCaptureManager.Domain.Services
         private readonly IDirect3DDevice _device;
         private readonly SharpDX.Direct3D11.Device _d3dDevice;
         private readonly SharpDX.DXGI.SwapChain1 _swapChain;
+        private readonly IFrameTap _frameTap;
 
-        public CaptureService(IDirect3DDevice device, GraphicsCaptureItem graphicsCaptureItem)
+        public CaptureService(IDirect3DDevice device, GraphicsCaptureItem graphicsCaptureItem, IFrameTap frameTap = null)
         {
+            _frameTap = frameTap;
             _item = graphicsCaptureItem;
             _device = device;
             _d3dDevice = Direct3D11Helper.CreateSharpDXDevice(_device);
@@ -66,6 +69,7 @@ namespace CodescoveryCaptureManager.Domain.Services
                 if (_disposed) return;
                 _disposed = true;
                 _framePool.FrameArrived -= OnFrameArrived;
+                _frameTap?.OnCaptureStopped();
                 _session?.Dispose();
                 _framePool?.Dispose();
                 _swapChain?.Dispose();
@@ -100,6 +104,19 @@ namespace CodescoveryCaptureManager.Domain.Services
             }
         }
 
+        private void OfferToTap(SharpDX.Direct3D11.Texture2D frame)
+        {
+            if (_frameTap == null) return;
+            try
+            {
+                _frameTap.OnFrame(frame, _lastSize.Width, _lastSize.Height);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Frame tap failed. {ex.Message}");
+            }
+        }
+
         private void ProcessFrame(Direct3D11CaptureFramePool sender)
         {
             var newSize = false;
@@ -127,6 +144,7 @@ namespace CodescoveryCaptureManager.Domain.Services
                 using (var bitmap = Direct3D11Helper.CreateSharpDXTexture2D(frame.Surface))
                 {
                     _d3dDevice.ImmediateContext.CopyResource(bitmap, backBuffer);
+                    OfferToTap(bitmap);
                 }
 
             } // Retire the frame.
