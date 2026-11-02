@@ -8,7 +8,7 @@ Source of truth for agents. Update when code changes.
 | [known-issues.md](known-issues.md) | Bugs, fragilities, resilience gaps, ordered by priority |
 | [decisions.md](decisions.md) | Design decisions and rationale (append-only log) |
 | [release-and-distribution.md](release-and-distribution.md) | CI, tag-driven release, winget/choco packaging, auto-update status |
-| [web-prototype.md](web-prototype.md) | Browser version (`web/`), limits, focus-bridge protocol |
+| [web-ui.md](web-ui.md) | React web UI (`src/Web`), served by the app; focus-bridge protocol, build, limits |
 | [profiles.md](profiles.md) | Saved window profiles: rule model, storage, service, privacy |
 | [e2e-testing.md](e2e-testing.md) | UI-Automation e2e script (`.claude/scripts/e2e-focus.ps1`) for focus/fallback behaviour, gotchas |
 

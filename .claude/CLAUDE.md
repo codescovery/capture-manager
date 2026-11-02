@@ -15,7 +15,7 @@ CodescoveryCaptureManager: Windows WPF app for streamers/presenters. User picks 
 
 ## Commands
 
-Run from `src/`. Solution: `Codescovery.CaptureManager.sln`. Target `net10.0-windows10.0.19041.0`, Windows only (WPF, CsWinRT-projected WinRT, user32); needs .NET 10 SDK. xUnit tests in `src/Tests` (profile logic), no linter; CI = `.github/workflows/ci.yml` (build + test). A running app instance locks `bin\Debug` DLLs: close it before building. UI behaviour is checked with the UI Automation scripts in `.claude/scripts` (see docs/e2e-testing.md).
+Run from `src/`. Solution: `Codescovery.CaptureManager.sln`. Target `net10.0-windows10.0.19041.0`, Windows only (WPF, CsWinRT-projected WinRT, user32); needs .NET 10 SDK and Node 22 (the App build runs `npm` for `src/Web`, the React UI the app serves at `http://127.0.0.1:47800/`; skip with `-p:SkipWebBuild=true`, see docs/web-ui.md). xUnit tests in `src/Tests` (profile logic), no linter; CI = `.github/workflows/ci.yml` (build + test). A running app instance locks `bin\Debug` DLLs: close it before building. UI behaviour is checked with the UI Automation scripts in `.claude/scripts` (see docs/e2e-testing.md).
 
 ```bash
 dotnet restore src/Codescovery.CaptureManager.sln
