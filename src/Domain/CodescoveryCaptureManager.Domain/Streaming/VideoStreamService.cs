@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Threading;
 using SharpDX.Direct3D11;
 using CodescoveryCaptureManager.Domain.Interfaces;
 
@@ -24,8 +25,24 @@ namespace CodescoveryCaptureManager.Domain.Streaming
         private H264Encoder _encoder;
         private int _sourceWidth;
         private int _sourceHeight;
+        private int _encodedWidth;
+        private int _encodedHeight;
+        private long _encodedFrames;
 
         public event Action<EncodedFrame> FrameEncoded;
+
+        public VideoStreamStats Stats
+        {
+            get
+            {
+                lock (_gate)
+                {
+                    return _encoder == null
+                        ? VideoStreamStats.Idle
+                        : new VideoStreamStats(true, _encodedWidth, _encodedHeight, _encoder.IsHardware, Interlocked.Read(ref _encodedFrames));
+                }
+            }
+        }
 
         public void SetViewerCount(int viewers)
         {
@@ -98,13 +115,19 @@ namespace CodescoveryCaptureManager.Domain.Streaming
             _deviceHandle = device.NativePointer;
             _sourceWidth = contentWidth;
             _sourceHeight = contentHeight;
+            _encodedWidth = width;
+            _encodedHeight = height;
             _converter = new Nv12Converter(device, contentWidth, contentHeight, width, height, FramesPerSecond);
             _encoder = new H264Encoder(device, width, height, FramesPerSecond, BitrateFor(width, height));
             _encoder.FrameEncoded += OnEncoded;
             Console.WriteLine($"Video stream: {width}x{height} {(_encoder.IsHardware ? "hardware" : "software")} H.264.");
         }
 
-        private void OnEncoded(EncodedFrame frame) => FrameEncoded?.Invoke(frame);
+        private void OnEncoded(EncodedFrame frame)
+        {
+            Interlocked.Increment(ref _encodedFrames);
+            FrameEncoded?.Invoke(frame);
+        }
 
         private static (int, int) FitEven(int width, int height)
         {

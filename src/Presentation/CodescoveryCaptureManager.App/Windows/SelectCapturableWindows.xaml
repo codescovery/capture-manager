@@ -8,14 +8,11 @@
         Title="Choose windows to share"
         Width="960" Height="640" MinWidth="640" MinHeight="420"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
-        Background="#1E1E1E" Foreground="White"
+        Background="{StaticResource WindowBrush}" Foreground="{StaticResource TextBrush}"
         TextElement.FontSize="13"
         KeyDown="Window_OnKeyDown">
     <Window.Resources>
-        <SolidColorBrush x:Key="CardBrush" Color="#2A2A2A" />
-        <SolidColorBrush x:Key="CardHoverBrush" Color="#333333" />
         <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource BrandColor}" />
-        <SolidColorBrush x:Key="MutedBrush" Color="#A3A3A3" />
         <SolidColorBrush x:Key="ThumbnailBackdropBrush" Color="#141414" />
         <BooleanToVisibilityConverter x:Key="BooleanToVisibility" />
 
@@ -106,7 +103,7 @@
                 <ColumnDefinition Width="280" />
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                <TextBlock Text="Choose windows to share" FontSize="20" FontWeight="SemiBold" />
+                <TextBlock Text="Choose windows to share" Style="{StaticResource TitleText}" />
                 <TextBlock Margin="0,2,0,0" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"
                            Text="Only the selected windows appear in the capture window. Share that one window in Teams, Meet or OBS." />
             </StackPanel>
@@ -139,11 +136,11 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0" Orientation="Horizontal">
-                <Button Content="Select all" Style="{StaticResource MaterialDesignFlatButton}"
+                <Button Content="Select all" Style="{StaticResource GhostButton}"
                         Click="SelectAll_OnClick" />
-                <Button Content="Clear" Style="{StaticResource MaterialDesignFlatButton}"
+                <Button Content="Clear" Style="{StaticResource GhostButton}"
                         Click="Clear_OnClick" />
-                <Button Content="Save as profile..." Style="{StaticResource MaterialDesignFlatButton}"
+                <Button Content="Save as profile..." Style="{StaticResource GhostButton}"
                         Click="SaveAsProfile_OnClick"
                         ToolTip="Save the selected windows as a reusable profile" />
             </StackPanel>
@@ -151,10 +148,10 @@
                        VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" />
             <StackPanel Grid.Column="2" Orientation="Horizontal">
                 <Button Content="Cancel" Margin="0,0,8,0" IsCancel="True"
-                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Style="{StaticResource SecondaryButton}"
                         Click="Cancel_OnClick" />
                 <Button Content="Apply" Name="ApplyButton" IsDefault="False"
-                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        Style="{StaticResource PrimaryButton}"
                         Click="Apply_OnClick" />
             </StackPanel>
         </Grid>

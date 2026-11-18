@@ -49,7 +49,7 @@ function Start-TestApp([string]$dataDir = '') {
 function Overlay-State($main) {
   $t = $main.FindAll($script:Tree::Descendants, [System.Windows.Automation.Condition]::TrueCondition) |
     ? { $_.Current.ControlType.ProgrammaticName -eq 'ControlType.Text' } | % { $_.Current.Name }
-  if ($t -contains 'No selected window is focused') { 'BLANK + NoFocus message' } elseif ($t -contains 'No windows selected') { 'EmptyState' } else { 'CAPTURING' }
+  if ($t -contains 'No selected window is focused') { 'BLANK + NoFocus message' } elseif ($t -contains 'Share only the windows you choose') { 'EmptyState' } else { 'CAPTURING' }
 }
 function Owned-Windows($main) {
   $main.FindAll($script:Tree::Descendants, (Prop $script:UIA::ControlTypeProperty ([System.Windows.Automation.ControlType]::Window)))

@@ -5,10 +5,8 @@
         xmlns:local="clr-namespace:CodescoveryCaptureManager.App.Windows"
         Title="Save profile" Width="760" Height="520" MinWidth="620" MinHeight="360"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
-        Background="#1E1E1E" Foreground="White" TextElement.FontSize="13">
+        Background="{StaticResource WindowBrush}" Foreground="{StaticResource TextBrush}" TextElement.FontSize="13">
     <Window.Resources>
-        <SolidColorBrush x:Key="MutedBrush" Color="#A3A3A3" />
-        <SolidColorBrush x:Key="WarningBrush" Color="#FFB74D" />
         <BooleanToVisibilityConverter x:Key="BooleanToVisibility" />
     </Window.Resources>
     <Grid Margin="24,20,24,16">
@@ -20,7 +18,7 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0">
-            <TextBlock Text="Save profile" FontSize="20" FontWeight="SemiBold" />
+            <TextBlock Text="Save profile" Style="{StaticResource TitleText}" />
             <TextBlock Margin="0,2,0,12" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}"
                        Text="A profile stores rules, not windows: apps get new handles when restarted. Each rule matches a process and part of the title (for example the solution name in Visual Studio)." />
             <TextBox Name="ProfileName" Style="{StaticResource MaterialDesignOutlinedTextBox}"
@@ -33,7 +31,7 @@
             <ItemsControl Name="RuleList">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type local:RuleRow}">
-                        <Border Margin="0,0,0,8" Padding="10" CornerRadius="6" Background="#2A2A2A">
+                        <Border Margin="0,0,0,8" Padding="10" CornerRadius="8" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource StrokeBrush}" BorderThickness="1">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="140" />
@@ -83,8 +81,8 @@
                        TextWrapping="Wrap" />
             <StackPanel Grid.Column="1" Orientation="Horizontal">
                 <Button Content="Cancel" Margin="0,0,8,0" IsCancel="True"
-                        Style="{StaticResource MaterialDesignOutlinedButton}" />
-                <Button Content="Save" IsDefault="True" Style="{StaticResource MaterialDesignRaisedButton}"
+                        Style="{StaticResource SecondaryButton}" />
+                <Button Content="Save" IsDefault="True" Style="{StaticResource PrimaryButton}"
                         Click="Save_OnClick" />
             </StackPanel>
         </Grid>

@@ -44,13 +44,19 @@ namespace CodescoveryCaptureManager.Domain.Services
             _site = new StaticSiteResponder(typeof(FocusBridgeService).Assembly);
         }
 
+        public bool IsRunning => _started;
+
+        public string Url => $"http://127.0.0.1:{_options.Port}/";
+
+        public int ViewerCount => _clients.Count;
+
         public void Start()
         {
             if (_started) return;
 
             try
             {
-                _listener.Prefixes.Add($"http://127.0.0.1:{_options.Port}/");
+                _listener.Prefixes.Add(Url);
                 _listener.Start();
                 _started = true;
                 _videoStream.FrameEncoded += OnFrameEncoded;

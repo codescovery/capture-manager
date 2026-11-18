@@ -55,7 +55,7 @@ namespace CodescoveryCaptureManager.Domain.Services
             content.AnchorPoint = new Vector2(0.5f);
             content.RelativeOffsetAdjustment = new Vector3(0.5f, 0.5f, 0);
             content.RelativeSizeAdjustment = Vector2.One;
-            content.Size = new Vector2(-80, -80);
+            content.Size = new Vector2(-32, -32);
             content.Brush = _brush;
             content.Shadow = shadow;
             return content;

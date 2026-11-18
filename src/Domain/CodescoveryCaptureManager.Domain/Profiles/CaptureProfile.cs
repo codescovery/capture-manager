@@ -12,5 +12,5 @@ namespace CodescoveryCaptureManager.Domain.Profiles
     /// <summary>Outcome of applying a profile: how many windows were bound and which rules found none yet.</summary>
     public sealed record ProfileApplyResult(int BoundWindows, IReadOnlyList<WindowRule> WaitingRules);
 
-    public sealed record AppSettings(Guid? LastProfileId = null, string FallbackMode = "Message", bool ExitOnClose = false);
+    public sealed record AppSettings(Guid? LastProfileId = null, string FallbackMode = "Message", bool ExitOnClose = false, string WindowTitle = null);
 }

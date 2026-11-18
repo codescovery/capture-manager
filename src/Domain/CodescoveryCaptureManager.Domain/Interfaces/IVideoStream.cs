@@ -10,6 +10,9 @@ namespace CodescoveryCaptureManager.Domain.Interfaces
     {
         event Action<EncodedFrame> FrameEncoded;
 
+        /// <summary>What is being encoded right now; <see cref="VideoStreamStats.Idle"/> while nobody watches.</summary>
+        VideoStreamStats Stats { get; }
+
         void SetViewerCount(int viewers);
 
         void RequestKeyFrame();

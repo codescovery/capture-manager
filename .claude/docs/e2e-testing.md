@@ -12,7 +12,7 @@ powershell -File .claude/scripts/e2e-focus.ps1
 Expected output: `0) … BLANK + NoFocus message` (nothing shown right after Apply), `A) … BLANK + NoFocus message`, `B) fixed=Notepad … CAPTURING`, `C) … BLANK + NoFocus message`.
 
 ## How it observes state
-- Overlay text elements are in the UIA tree only while visible: `No selected window is focused` = blank view, `No windows selected` = nothing picked, neither = a window is being shown.
+- Overlay text elements are in the UIA tree only while visible: `No selected window is focused` = blank view, `Share only the windows you choose` = nothing picked (first-run guide), neither = a window is being shown.
 - It cannot see the composition visual itself (pixels); "CAPTURING" means "no overlay", inferred from `WindowCaptureService.IsCapturing()` driving `UpdateEmptyState()`.
 
 ## Gotchas learned
@@ -27,3 +27,5 @@ Expected output: `0) … BLANK + NoFocus message` (nothing shown right after App
 - `e2e-lib.ps1`: shared UIA helpers (`Start-TestApp`, `Open-Picker-And-Select`, `Overlay-State`, `Get-Menu-Items`, …) for new scripts.
 
 Unit tests: `dotnet test src/Codescovery.CaptureManager.sln` (xUnit, `src/Tests`).
+
+- Settings are a window now (`SettingsButton` -> owned window `Settings`; nav items `GeneralNav` / `FocusNav` / `WebViewerNav` / `AboutNav`, fallback radios by name). `e2e-focus.ps1` was updated for it but NOT re-run after the change. The scripts start Notepad: Windows 11 Notepad restores its previous session, so close private files first.

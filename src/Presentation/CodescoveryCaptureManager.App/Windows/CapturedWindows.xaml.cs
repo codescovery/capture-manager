@@ -8,6 +8,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Threading;
 using Windows.Graphics.Capture;
 using Windows.UI.Composition;
 using WindowsDesktop;
@@ -17,6 +19,7 @@ using CodescoveryCaptureManager.Domain.Helpers;
 using CodescoveryCaptureManager.Domain.Interfaces;
 using CodescoveryCaptureManager.Domain.Profiles;
 using CodescoveryCaptureManager.Domain.Services;
+using CodescoveryCaptureManager.Domain.Streaming;
 using CodescoveryCaptureManager.Domain.Structs;
 using MaterialDesignThemes.Wpf;
 using CompositionTarget = Windows.UI.Composition.CompositionTarget;
@@ -38,13 +41,18 @@ namespace CodescoveryCaptureManager.App.Windows
         private CompositionTarget _compositionTarget;
         private VirtualDesktop _virtualDesktop;
         private readonly VirtualDesktop _mainVirtualDesktop;
-        private bool _isMenuExpanded = true;
+        private const string DefaultShareTitle = "Captured Window";
+        private const double StatusRefreshSeconds = 1;
+        private const double MaximizedFrameInset = 7;
+        private readonly DispatcherTimer _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(StatusRefreshSeconds) };
+        private bool _isCleanView;
+        private string _shownWindowName;
+        private string _shownWindowSize;
+        private VideoStreamStats _lastStreamStats;
         private readonly IFocusBridge _focusBridge;
         private readonly IVideoStream _videoStream;
         private FocusFallbackMode _fallbackMode = FocusFallbackMode.Message;
         private IntPtr _fallbackWindowHandle;
-
-        private enum FocusFallbackMode { Message, KeepLast, FixedWindow }
 
         private readonly IProfileService _profileService;
 
@@ -66,8 +74,7 @@ namespace CodescoveryCaptureManager.App.Windows
             _containerVisual = InitializeContainerVisual();
             _windowCaptureService = new WindowCaptureService(_compositor, _videoStream);
             _mainVirtualDesktop = GetMainVirtualDesktop();
-            //HandleFooterMargin();
-            SwitchMenuExpanderIcon();
+            Title = _profileService.Settings.WindowTitle ?? Title;
             SetupEvents();
             StartCapturing();
         }
@@ -113,14 +120,14 @@ namespace CodescoveryCaptureManager.App.Windows
         {
             if (_windowCaptureService != null && _windowCaptureService.IsCapturing(closedcapturablewindow.Handle))
                 _windowCaptureService.StopCapture();
-            Dispatcher.BeginInvoke(UpdateEmptyState);
+            Dispatcher.BeginInvoke(RefreshView);
         }
 
         private void OnMonitoredWindowsBlurred()
         {
             _focusBridge.PublishBlurred();
             ApplyFocusFallback();
-            UpdateEmptyState();
+            RefreshView();
         }
 
         // What the view shows while no selected window is focused (user setting, see settings menu).
@@ -142,7 +149,25 @@ namespace CodescoveryCaptureManager.App.Windows
             return true;
         }
 
-        private void SetFallback(FocusFallbackMode mode, IntPtr fixedWindowHandle = default)
+        internal FocusFallbackMode FallbackMode => _fallbackMode;
+
+        internal IntPtr FallbackWindowHandle => _fallbackWindowHandle;
+
+        internal IReadOnlyList<CapturableWindow> PickedWindows => _capturableWindowsMonitoringService.GetMonitoredWindows();
+
+        /// <summary>Title of this window in the Teams / Meet / OBS share picker.</summary>
+        internal string ShareTitle
+        {
+            get => Title;
+            set
+            {
+                var title = string.IsNullOrWhiteSpace(value) ? DefaultShareTitle : value.Trim();
+                Title = title;
+                _profileService.UpdateSettings(settings => settings with { WindowTitle = title });
+            }
+        }
+
+        internal void SetFallback(FocusFallbackMode mode, IntPtr fixedWindowHandle = default)
         {
             _fallbackMode = mode;
             _fallbackWindowHandle = fixedWindowHandle;
@@ -153,53 +178,82 @@ namespace CodescoveryCaptureManager.App.Windows
                 OnMonitoredWindowsBlurred();
         }
 
-        private void About_OnClick(object sender, RoutedEventArgs e) => AboutDialog.Show(this);
-
-        private void ReportIssue_OnClick(object sender, RoutedEventArgs e) => AppInfo.OpenInBrowser(AppInfo.NewIssueUrl());
-
-        private void FallbackMessage_OnClick(object sender, RoutedEventArgs e) => SetFallback(FocusFallbackMode.Message);
-
-        private void FallbackKeepLast_OnClick(object sender, RoutedEventArgs e) => SetFallback(FocusFallbackMode.KeepLast);
-
-        private void FallbackWindow_OnClick(object sender, RoutedEventArgs e)
-            => SetFallback(FocusFallbackMode.FixedWindow, (IntPtr)((MenuItem)sender).Tag);
-
-        // Rebuilt each time the menu opens: one checkable entry per picked window plus the two fixed modes.
-        private void ConfigureFallbackMenu()
-        {
-            foreach (var staleItem in FallbackMenu.Items.OfType<MenuItem>().Where(item => item.Tag is IntPtr).ToList())
-                FallbackMenu.Items.Remove(staleItem);
-
-            foreach (var window in _capturableWindowsMonitoringService.GetMonitoredWindows())
-                FallbackMenu.Items.Add(CreateFallbackWindowItem(window));
-
-            FallbackWindowsSeparator.Visibility = FallbackMenu.Items.OfType<MenuItem>().Any(item => item.Tag is IntPtr)
-                ? Visibility.Visible
-                : Visibility.Collapsed;
-            FallbackMessage.IsChecked = _fallbackMode == FocusFallbackMode.Message;
-            FallbackKeepLast.IsChecked = _fallbackMode == FocusFallbackMode.KeepLast;
-        }
-
-        private MenuItem CreateFallbackWindowItem(CapturableWindow window)
-        {
-            var item = new MenuItem
-            {
-                Header = $"Always show: {window.Name}",
-                IsCheckable = true,
-                IsChecked = _fallbackMode == FocusFallbackMode.FixedWindow && _fallbackWindowHandle == window.Handle,
-                Tag = window.Handle,
-            };
-            item.Click += FallbackWindow_OnClick;
-            return item;
-        }
-
-        private void UpdateEmptyState()
+        // One place decides what the window says: overlays, status pill and status bar.
+        private void RefreshView()
         {
             var hasMonitoredWindows = _capturableWindowsMonitoringService.HasMonitoredWindows();
             var isShowingWindow = _windowCaptureService?.IsCapturing() ?? false;
 
             EmptyState.Visibility = hasMonitoredWindows ? Visibility.Collapsed : Visibility.Visible;
             NoFocusState.Visibility = hasMonitoredWindows && !isShowingWindow ? Visibility.Visible : Visibility.Collapsed;
+            ShowStatus(hasMonitoredWindows, isShowingWindow);
+        }
+
+        private void ShowStatus(bool hasMonitoredWindows, bool isShowingWindow)
+        {
+            if (!hasMonitoredWindows)
+            {
+                SetStatus("FaintBrush", "Not set up", "Choose windows to get started.");
+                return;
+            }
+            if (isShowingWindow)
+            {
+                SetStatus("BrandBrush", "Live", $"Showing {_shownWindowName}  \u00B7  {_shownWindowSize}");
+                return;
+            }
+            var selected = _capturableWindowsMonitoringService.GetMonitoredWindows().Count;
+            SetStatus("WarningBrush", "Paused", $"{selected} window{(selected == 1 ? string.Empty : "s")} selected  \u00B7  nothing is shown until you focus one");
+        }
+
+        private void SetStatus(string dotBrushKey, string pill, string detail)
+        {
+            StatusDot.Fill = (Brush)FindResource(dotBrushKey);
+            StatusPillText.Text = pill;
+            StatusText.Text = detail;
+        }
+
+        private void RefreshStreamStatus()
+        {
+            if (!_focusBridge.IsRunning)
+            {
+                ShowWebViewerUnavailable();
+                return;
+            }
+
+            var viewers = _focusBridge.ViewerCount;
+            ViewerCountText.Text = viewers == 1 ? "1 viewer" : $"{viewers} viewers";
+            WebViewerText.Text = new Uri(_focusBridge.Url).Authority;
+            StreamStatsText.Text = DescribeStream(_videoStream.Stats);
+        }
+
+        private void ShowWebViewerUnavailable()
+        {
+            ViewerCountText.Text = "0 viewers";
+            WebViewerText.Text = "Web viewer unavailable";
+            WebViewerButton.IsEnabled = false;
+            WebViewerButton.ToolTip = "The web viewer port is in use by another program.";
+            CopyWebViewerButton.Visibility = Visibility.Collapsed;
+            EmptyStateWebViewerButton.Visibility = Visibility.Collapsed;
+            StreamStatsText.Text = string.Empty;
+        }
+
+        private string DescribeStream(VideoStreamStats stats)
+        {
+            var framesPerSecond = stats.FramesPerSecondSince(_lastStreamStats, StatusRefreshSeconds);
+            _lastStreamStats = stats;
+            return stats.IsEncoding
+                ? $"Streaming {stats.Width} \u00D7 {stats.Height}  \u00B7  {framesPerSecond:0} fps"
+                : string.Empty;
+        }
+
+        private void OpenWebViewer_OnClick(object sender, RoutedEventArgs e) => AppInfo.OpenInBrowser(_focusBridge.Url);
+
+        private async void CopyWebViewer_OnClick(object sender, RoutedEventArgs e)
+        {
+            Clipboard.SetText(_focusBridge.Url);
+            CopyWebViewerIcon.Kind = PackIconKind.Check;
+            await Task.Delay(TimeSpan.FromSeconds(1.5));
+            CopyWebViewerIcon.Kind = PackIconKind.ContentCopy;
         }
 
         private void ProfilesButton_OnClick(object sender, RoutedEventArgs e)
@@ -271,7 +325,7 @@ namespace CodescoveryCaptureManager.App.Windows
                 var result = _profileService.Apply(profileId);
                 _windowCaptureService?.StopCapture();
                 _capturableWindowsMonitoringService.SyncWithForegroundWindow();
-                UpdateEmptyState();
+                RefreshView();
                 ProfilesButton.ToolTip = DescribeApplyResult(result);
             }
             catch (Exception ex)
@@ -308,14 +362,14 @@ namespace CodescoveryCaptureManager.App.Windows
             var isShowingWindow = _windowCaptureService?.IsCapturing() ?? false;
             if (_fallbackMode == FocusFallbackMode.FixedWindow && !isShowingWindow)
                 TryShowFallbackWindow();
-            UpdateEmptyState();
+            RefreshView();
         }
 
-        private void SettingsButton_OnClick(object sender, RoutedEventArgs e)
-        {
-            SettingsButton.ContextMenu.PlacementTarget = SettingsButton;
-            SettingsButton.ContextMenu.IsOpen = true;
-        }
+        private void SettingsButton_OnClick(object sender, RoutedEventArgs e) => ShowSettings(SettingsSection.General);
+
+        private void ShowSettings(SettingsSection section)
+            => SettingsWindow.Show(this, _profileService, _focusBridge, section);
+
         private void StopCapturing()
         {
             _capturableWindowsMonitoringService.StopMonitoring();
@@ -323,8 +377,8 @@ namespace CodescoveryCaptureManager.App.Windows
         }
         private void SetupEvents()
         {
-            CurrentWindowTitle.Text = Title;
-            CurrentWindowTitle.TextChanged += CurrentWindowTitleOnTextChanged;
+            _statusTimer.Tick += (_, _) => RefreshStreamStatus();
+            PreviewKeyDown += CapturedWindows_OnPreviewKeyDown;
             _capturableWindowsMonitoringService.MonitoredWindowFocused += CapturableWindowsMonitoringServiceOnMonitoredWindowFocused;
             _capturableWindowsMonitoringService.MonitoredWindowClosed += CapturableWindowsMonitoringServiceOnMonitoredWindowClosed;
             _capturableWindowsMonitoringService.MonitoredWindowsBlurred += OnMonitoredWindowsBlurred;
@@ -347,7 +401,9 @@ namespace CodescoveryCaptureManager.App.Windows
                 if (item == null) return;
 
                 _windowCaptureService.StartCapture(item, window.Handle);
-                UpdateEmptyState();
+                _shownWindowName = window.Name;
+                _shownWindowSize = $"{item.Size.Width} \u00D7 {item.Size.Height}";
+                RefreshView();
             }
             catch (Exception ex)
             {
@@ -357,36 +413,10 @@ namespace CodescoveryCaptureManager.App.Windows
         }
 
 
-        private void CurrentWindowTitleOnTextChanged(object sender, TextChangedEventArgs e)
-        {
-            Title = CurrentWindowTitle.Text;
-        }
+        internal bool CanUseVirtualDesktop => VirtualDesktop.IsSupported;
 
-
-
-        private void SettingsMenu_OnSubmenuOpened(object sender, RoutedEventArgs e)
-        {
-            //CurrentWindowTitle.Text = Title;
-            //CreateOpenedWindowsMenuItems(_windowsProcessServices.GetOpenedWindows(this));
-            ConfigureFallbackMenu();
-            RunInTray.IsChecked = !_profileService.Settings.ExitOnClose;
-            StartWithWindows.IsChecked = StartupRegistration.IsEnabled();
-            ConfigureVirtualDesktopActions();
-            CurrentWindowTitleOnTextChanged(this,null);
-        }
-
-        private void ConfigureVirtualDesktopActions()
-        {
-            if (!VirtualDesktop.IsSupported) return;
-
-            VirtualDesktopActions.IsEnabled = true;
-            if (_virtualDesktop == null)
-                MoveToVirtualDesktop.IsEnabled = true;
-            else if (VirtualDesktop.GetDesktops().ToList().Exists(p => p.Id.Equals(_virtualDesktop.Id)))
-                CloseVirtualDesktop.IsEnabled = true;
-            else
-                MoveToVirtualDesktop.IsEnabled = true;
-        }
+        internal bool IsOnOwnVirtualDesktop
+            => _virtualDesktop != null && VirtualDesktop.GetDesktops().ToList().Exists(desktop => desktop.Id.Equals(_virtualDesktop.Id));
 
         public  void OpenCapturePicker(object sender, RoutedEventArgs e)
         {
@@ -409,26 +439,59 @@ namespace CodescoveryCaptureManager.App.Windows
             _compositionTarget.Root = _containerVisual;
             _containerVisual.Children.InsertAtTop(_windowCaptureService.GetVisual());
             UpdateProfileLabel();
+            UpdateCaptureBounds();
+            RefreshStreamStatus();
+            _statusTimer.Start();
             if (_profileService.Active != null)
                 ApplyProfile(_profileService.Active.Id);
-            UpdateEmptyState();
+            RefreshView();
         }
         private CompositionTarget InitializeDesktopWindowTarget()
         {
             var compositionTarget = _compositor.CreateDesktopWindowTarget(new WindowInteropHelper(this).Handle, true);
             return compositionTarget;
         }
-        private void MenuExpander_OnClick(object sender, RoutedEventArgs e)
+        // Clean view: viewers of the shared window see only the captured content.
+        private void CleanView_OnClick(object sender, RoutedEventArgs e) => SetCleanView(!_isCleanView);
+
+        private void SetCleanView(bool isCleanView)
         {
-            CapturedWindowsMenu.Visibility = CapturedWindowsMenu.Visibility == Visibility.Collapsed ? Visibility.Visible : Visibility.Collapsed;
-            _isMenuExpanded = CapturedWindowsMenu.Visibility != Visibility.Collapsed;
-            ShowToolbarButton.Visibility = _isMenuExpanded ? Visibility.Collapsed : Visibility.Visible;
-            SwitchMenuExpanderIcon();
+            _isCleanView = isCleanView;
+            var controls = isCleanView ? Visibility.Collapsed : Visibility.Visible;
+            TitleBar.Visibility = controls;
+            StatusBar.Visibility = controls;
+            CleanViewBar.Visibility = isCleanView ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        private void SwitchMenuExpanderIcon()
+        private void CapturedWindows_OnPreviewKeyDown(object sender, KeyEventArgs e)
         {
-            MenuExpander.Kind = _isMenuExpanded ? PackIconKind.ArrowUp : PackIconKind.ArrowDown;
+            if (e.Key != Key.H || Keyboard.Modifiers != ModifierKeys.Control) return;
+            SetCleanView(!_isCleanView);
+            e.Handled = true;
+        }
+
+        // The Composition visual is drawn over the WPF content, so it must cover the capture area only.
+        private void UpdateCaptureBounds()
+        {
+            if (!IsLoaded) return;
+
+            var dpi = VisualTreeHelper.GetDpi(this);
+            var origin = ScreenCaptureGrid.TranslatePoint(new Point(0, 0), this);
+            _containerVisual.RelativeSizeAdjustment = Vector2.Zero;
+            _containerVisual.Offset = new Vector3((float)(origin.X * dpi.DpiScaleX), (float)(origin.Y * dpi.DpiScaleY), 0);
+            _containerVisual.Size = new Vector2((float)(ScreenCaptureGrid.ActualWidth * dpi.DpiScaleX), (float)(ScreenCaptureGrid.ActualHeight * dpi.DpiScaleY));
+        }
+
+        private void ScreenCaptureGrid_OnSizeChanged(object sender, SizeChangedEventArgs e) => UpdateCaptureBounds();
+
+        // A maximized window with a custom frame overflows the screen by the resize border.
+        private void CapturedWindows_OnStateChanged(object sender, EventArgs e)
+        {
+            var isMaximized = WindowState == WindowState.Maximized;
+            RootBorder.Padding = new Thickness(isMaximized ? MaximizedFrameInset : 0);
+            MaximizeGlyph.Text = isMaximized ? "\uE923" : "\uE922";
+            WindowMaximizeButton.ToolTip = isMaximized ? "Restore" : "Maximize";
+            Dispatcher.BeginInvoke(UpdateCaptureBounds, DispatcherPriority.Loaded);
         }
 
         private void CapturedWindows_OnClosing(object sender, CancelEventArgs e)
@@ -458,30 +521,26 @@ namespace CodescoveryCaptureManager.App.Windows
             Activate();
         }
 
-        public void ShowAbout() => AboutDialog.Show(this);
+        public void ShowAbout()
+        {
+            ShowFromTray();
+            ShowSettings(SettingsSection.About);
+        }
 
-        private void RunInTray_OnClick(object sender, RoutedEventArgs e)
-            => _profileService.UpdateSettings(settings => settings with { ExitOnClose = !RunInTray.IsChecked });
-
-        private void StartWithWindows_OnClick(object sender, RoutedEventArgs e)
-            => StartupRegistration.SetEnabled(StartWithWindows.IsChecked);
-
-        private void MoveToVirtualDesktop_OnClick(object sender, RoutedEventArgs e)
+        internal void MoveToVirtualDesktop()
         {
             if (_virtualDesktop == null && !VirtualDesktop.IsSupported) return;
             _virtualDesktop = CreateNewDesktop();
 
             _virtualDesktop.SwitchAndMove(this);
             _mainVirtualDesktop.Switch();
-            MoveToVirtualDesktop.IsEnabled = false;
         }
 
-        private void CloseVirtualDesktop_OnClick(object sender, RoutedEventArgs e)
+        internal void CloseVirtualDesktop()
         {
-            if (VirtualDesktop.GetDesktops().ToList().Exists(p => p.Id.Equals(_virtualDesktop.Id)))
-                _virtualDesktop?.Remove(_mainVirtualDesktop);
+            if (IsOnOwnVirtualDesktop)
+                _virtualDesktop.Remove(_mainVirtualDesktop);
             _virtualDesktop = null;
-            CloseVirtualDesktop.IsEnabled = false;
         }
 
         private void WindowMinimizeButton_OnClick(object sender, RoutedEventArgs e)=> WindowState = WindowState.Minimized;
@@ -493,43 +552,16 @@ namespace CodescoveryCaptureManager.App.Windows
 
         private void WindowCloseButton_OnClick(object sender, RoutedEventArgs e) => Close();
 
-        private void CapturedWindows_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        // The capture area drags the window (the title bar may be hidden); double-click toggles maximize.
+        private void ScreenCaptureGrid_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (e.ClickCount == 2)
+            {
+                MaximizeButton_OnClick(sender, e);
+                return;
+            }
             if (e.ButtonState == MouseButtonState.Pressed)
                 DragMove();
         }
-
-        // Toolbar background drags the window; clicks inside the title box must not.
-        private void CapturedWindowsMenu_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            e.Handled = IsInsideTextBox(e.OriginalSource as DependencyObject);
-        }
-
-        private static bool IsInsideTextBox(DependencyObject element)
-        {
-            while (element != null)
-            {
-                if (element is TextBox) return true;
-                element = element is System.Windows.Media.Visual
-                    ? System.Windows.Media.VisualTreeHelper.GetParent(element)
-                    : LogicalTreeHelper.GetParent(element);
-            }
-            return false;
-        }
-
-        private void CapturedWindows_OnMouseDoubleClick(object sender, MouseButtonEventArgs e)
-        {
-            MaximizeButton_OnClick(sender, e);
-        }
-
-        //private void CapturedWindows_OnStateChanged(object sender, EventArgs e)
-        //{
-        //    HandleFooterMargin();
-        //}
-
-        //private void HandleFooterMargin()
-        //{
-        //    FooterMenu.Margin = WindowState == WindowState.Maximized ? new Thickness(0, 0, 10, 50) : new Thickness(0, 0, 0, 0);
-        //}
     }
 }

@@ -57,7 +57,7 @@ Start-Sleep 1
 function Overlay-State {
   $m = Find-Top "Captured Window" $appPid
   $t = $m.FindAll($Tree::Descendants, [System.Windows.Automation.Condition]::TrueCondition) | ? { $_.Current.ControlType.ProgrammaticName -eq 'ControlType.Text' } | % { $_.Current.Name }
-  if ($t -contains 'No selected window is focused') { 'BLANK + NoFocus message' } elseif ($t -contains 'No windows selected') { 'EmptyState' } else { 'CAPTURING' }
+  if ($t -contains 'No selected window is focused') { 'BLANK + NoFocus message' } elseif ($t -contains 'Share only the windows you choose') { 'EmptyState' } else { 'CAPTURING' }
 }
 
 # pick notepad
@@ -81,31 +81,27 @@ $mainHwnd = [IntPtr]$main.Current.NativeWindowHandle
 Focus-Window $edge.MainWindowHandle
 "A) default mode, Edge focused            -> $(Overlay-State)"
 
-# open settings menu -> fallback submenu -> 'Always show: alpha-test...'
-Focus-Window $mainHwnd
-$settings = ById $main 'SettingsButton'
-$settings.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke(); Start-Sleep 1
-$rootKids = $script:root.FindAll($Tree::Descendants, (New-Object System.Windows.Automation.PropertyCondition($UIA::ControlTypeProperty,[System.Windows.Automation.ControlType]::MenuItem)))
-$sub = $rootKids | ? { $_.Current.Name -like 'When no selected window*' } | Select-Object -First 1
-if (-not $sub) { "fallback submenu not found; menu items: " + (($rootKids | % { $_.Current.Name }) -join ' | '); exit 2 }
-try { $sub.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand() } catch { "expand err: $_" }
-Start-Sleep 1
-$kids = $script:root.FindAll($Tree::Descendants, (New-Object System.Windows.Automation.PropertyCondition($UIA::ControlTypeProperty,[System.Windows.Automation.ControlType]::MenuItem)))
-"fallback items: " + (($kids | ? { $_.Current.Name -like 'Show a*' -or $_.Current.Name -like 'Keep*' -or $_.Current.Name -like 'Always show*' } | % { $_.Current.Name }) -join ' | ')
-$always = $kids | ? { $_.Current.Name -like 'Always show: alpha-test*' } | Select-Object -First 1
-$always.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke(); Start-Sleep 1
+# Settings window -> "When nothing is focused" -> pick a mode (applies immediately), then close it.
+function Set-Fallback([string]$radioName) {
+  Focus-Window $mainHwnd
+  (ById $main 'SettingsButton').GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke(); Start-Sleep 2
+  $dialog = $main.FindAll($Tree::Descendants, $winCond) | ? { $_.Current.Name -eq 'Settings' } | Select-Object -First 1
+  if (-not $dialog) { "settings window not found"; exit 2 }
+  (ById $dialog 'FocusNav').GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select(); Start-Sleep 1
+  (ByName $dialog $radioName).GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select(); Start-Sleep 1
+  $dialog.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Close(); Start-Sleep 1
+}
+
+# only one window is picked, so "Always show one window" selects Notepad
+Set-Fallback 'Always show one window'
 
 Focus-Window $notepad.MainWindowHandle
 Focus-Window $edge.MainWindowHandle
 "B) fixed=Notepad, Edge focused           -> $(Overlay-State)"
 
-# switch to keep-last, then message
-$settings.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke(); Start-Sleep 1
-$kids = $script:root.FindAll($Tree::Descendants, (New-Object System.Windows.Automation.PropertyCondition($UIA::ControlTypeProperty,[System.Windows.Automation.ControlType]::MenuItem)))
-$sub = $kids | ? { $_.Current.Name -like 'When no selected window*' } | Select-Object -First 1
-$sub.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand(); Start-Sleep 1
-$kids = $script:root.FindAll($Tree::Descendants, (New-Object System.Windows.Automation.PropertyCondition($UIA::ControlTypeProperty,[System.Windows.Automation.ControlType]::MenuItem)))
-($kids | ? { $_.Current.Name -eq 'Show a message' } | Select-Object -First 1).GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke(); Start-Sleep 1
+# back to message
+Set-Fallback 'Show a message'
+Focus-Window $edge.MainWindowHandle
 "C) back to message (Edge still focused?) fg='$(Fg)' -> $(Overlay-State)"
 
 # cleanup
