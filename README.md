@@ -1,8 +1,12 @@
 # Capture Manager
 
+**English** | [Português](README.pt-BR.md)
+
 Share one window instead of your whole screen, and still switch between apps.
 
 You pick the windows you are willing to show. Capture Manager displays, inside its own window, only the picked window that currently has focus. In Teams, Meet, OBS or any other tool you share the Capture Manager window: whatever you did not pick never reaches your viewers.
+
+![Two picked windows follow the focus; a window that was not picked shows nothing](docs/images/focus.en.gif)
 
 By [Codescovery](https://github.com/codescovery). Windows only.
 
@@ -26,7 +30,7 @@ By [Codescovery](https://github.com/codescovery). Windows only.
 
 ## Install
 
-Download `CodescoveryCaptureManager-win-Setup.exe` from the [latest release](https://github.com/codescovery/capture-manager/releases) and run it. It installs for the current user, without administrator rights.
+Download `CodescoveryCaptureManager-win-Setup.exe` from the [latest release](https://github.com/codescovery/capture-manager/releases/latest) and run it. It installs for the current user, without administrator rights.
 
 `CodescoveryCaptureManager-win-Portable.zip` in the same release runs without installing.
 
@@ -38,6 +42,12 @@ Packages for winget (`Codescovery.CaptureManager`) and Chocolatey (`codescovery-
 2. In your meeting or streaming tool, share the window named **Captured Window** (the name can be changed in Settings).
 3. Work as usual. The picked window you focus is what viewers see.
 
+### Pause
+
+Press `Ctrl+Alt+P` from any program (or use the pause button or the tray menu) to hide everything at once. Nothing is shown while paused, whatever you focus. Press it again to resume. The hotkey can be changed in Settings > General.
+
+![Ctrl+Alt+P pauses sharing and resumes it](docs/images/pause.en.gif)
+
 ### OBS
 
 Add a **Window Capture** source, select the Capture Manager window, and set **Capture Method** to **Windows Graphics Capture** (Windows 10 1903 and up). With the other methods OBS shows an empty window.
@@ -45,6 +55,8 @@ Add a **Window Capture** source, select the Capture Manager window, and set **Ca
 ### Web viewer
 
 Open `http://127.0.0.1:47800/` in Chrome or Edge (use `127.0.0.1`, not `localhost`) and share that tab. **Output only** leaves just the picture in the tab. The address answers on this computer only.
+
+![The web viewer page follows the focused picked window](docs/images/web.en.gif)
 
 ## Privacy
 
@@ -69,6 +81,8 @@ dotnet run --project src/Presentation/CodescoveryCaptureManager.App
 `-p:SkipWebBuild=true` builds without Node; the desktop app works, the web viewer page is then not served.
 
 Suggestions and pull requests are welcome.
+
+The animations above are recorded with `.claude/scripts/demo-recorder` from demo windows with made-up content.
 
 ## License
 

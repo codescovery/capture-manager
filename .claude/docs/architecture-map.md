@@ -87,5 +87,6 @@ None known. Removed 2026-11-18 after checking for references: `Events/MonitoredW
 
 ## 9. Project-level facts
 - Logging: `Domain/Diagnostics` (`AppLog` static facade over `RollingFileLog`), crash handlers in `App/Helpers/CrashReporter`; see logging.md. No `Console.WriteLine` (WinExe).
-- `README.md` (root) is the user-facing documentation: features, install, use with OBS / web viewer, privacy, build. Keep it in step with user-visible changes. `App/README.md` only points to it.
+- User-facing documentation is in two languages with the same structure: `README.md` (English) and `README.pt-BR.md` (Portuguese), linked to each other in their first lines. **Change both in the same commit.** UI labels stay in English in the Portuguese text (the app is not translated). `App/README.md` only points to the root README.
+- README animations: `docs/images/<scene>.<en|pt>.gif` (scenes `focus`, `pause`, `web`; captions are baked in, hence one file per language). Regenerate with `bash .claude/scripts/demo-recorder/record.sh [scene ...]` (needs ffmpeg and Edge) after a visible UI change. The recorder (`ccm-demo`, WinForms) opens three demo windows with made-up content, starts the app with a profile bound to two of them, and draws each frame from `PrintWindow` pictures of those windows, the app window and a guest-mode Edge window: the screen is never captured. It takes the foreground while it runs (about 15 s per scene and language).
 - One solution: `src/Codescovery.CaptureManager.sln`. `.gitignore` covers `.vs/`, `.idea/`, `*.user`, `bin/`, `obj/`.
