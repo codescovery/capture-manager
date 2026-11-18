@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Capture Manager logo options</title>
+<style>
+  :root { --bg:#161616; --card:#1f1f1f; --stroke:#333; --text:#f2f2f2; --muted:#a0a0a0; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:24px 16px 48px; background:var(--bg); color:var(--text); font:14px/1.5 "Segoe UI", system-ui, sans-serif; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  p.lead { color:var(--muted); margin:0 0 24px; max-width:720px; }
+  .grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); }
+  .option { background:var(--card); border:1px solid var(--stroke); border-radius:12px; padding:20px; }
+  .option h2 { font-size:16px; margin:16px 0 4px; }
+  .option p { color:var(--muted); margin:0 0 16px; font-size:13px; }
+  .hero { display:flex; justify-content:center; padding:12px 0; }
+  .hero svg { width:168px; height:168px; }
+  .sizes { display:flex; align-items:flex-end; gap:14px; padding:12px; border-radius:8px; }
+  .sizes.dark { background:#101010; border:1px solid var(--stroke); }
+  .sizes.light { background:#f3f3f3; margin-top:8px; }
+  .sizes span { font-size:11px; color:var(--muted); margin-left:auto; }
+  .sizes.light span { color:#555; }
+</style>
+</head>
+<body>
+<h1>Capture Manager: logo options</h1>
+<p class="lead">Three directions, each shown large and at the sizes Windows really uses (48, 32, 24 and 16 px: Start menu, taskbar, title bar, tray), on dark and light backgrounds. The current logo is last, for comparison.</p>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#A3D85A"/><stop offset="1" stop-color="#6FA82E"/>
+    </linearGradient>
+
+    <!-- A: Spotlight. Three windows, only the chosen one is lit. -->
+    <symbol id="logo-a" viewBox="0 0 512 512">
+      <rect width="512" height="512" rx="116" fill="#171A14"/>
+      <rect x="150" y="96" width="266" height="190" rx="26" fill="none" stroke="#3C4433" stroke-width="20"/>
+      <rect x="112" y="150" width="266" height="190" rx="26" fill="#171A14" stroke="#566246" stroke-width="20"/>
+      <rect x="64" y="206" width="300" height="214" rx="30" fill="url(#green)"/>
+      <rect x="64" y="206" width="300" height="56" rx="28" fill="#10140A" opacity=".22"/>
+      <circle cx="104" cy="234" r="11" fill="#10140A" opacity=".55"/>
+      <circle cx="140" cy="234" r="11" fill="#10140A" opacity=".55"/>
+    </symbol>
+
+    <!-- B: Capture frame. A window inside viewfinder corners. -->
+    <symbol id="logo-b" viewBox="0 0 512 512">
+      <rect width="512" height="512" rx="116" fill="url(#green)"/>
+      <g fill="none" stroke="#10140A" stroke-width="30" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M92 176 V124 a32 32 0 0 1 32 -32 H176"/>
+        <path d="M336 92 H388 a32 32 0 0 1 32 32 V176"/>
+        <path d="M420 336 V388 a32 32 0 0 1 -32 32 H336"/>
+        <path d="M176 420 H124 a32 32 0 0 1 -32 -32 V336"/>
+      </g>
+      <rect x="150" y="166" width="212" height="180" rx="24" fill="#FFFFFF"/>
+      <rect x="150" y="166" width="212" height="50" rx="24" fill="#10140A"/>
+      <rect x="150" y="192" width="212" height="24" fill="#10140A"/>
+    </symbol>
+
+    <!-- C: Monogram. A "C" that is also a window being cut out of the screen. -->
+    <symbol id="logo-c" viewBox="0 0 512 512">
+      <rect width="512" height="512" rx="116" fill="#171A14"/>
+      <path d="M372 150 H196 a56 56 0 0 0 -56 56 V306 a56 56 0 0 0 56 56 H372" fill="none" stroke="url(#green)" stroke-width="52" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="236" y="216" width="150" height="80" rx="20" fill="#FFFFFF"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="grid">
+  <div class="option">
+    <div class="hero"><svg><use href="#logo-a"/></svg></div>
+    <div class="sizes dark"><svg width="48" height="48"><use href="#logo-a"/></svg><svg width="32" height="32"><use href="#logo-a"/></svg><svg width="24" height="24"><use href="#logo-a"/></svg><svg width="16" height="16"><use href="#logo-a"/></svg><span>dark</span></div>
+    <div class="sizes light"><svg width="48" height="48"><use href="#logo-a"/></svg><svg width="32" height="32"><use href="#logo-a"/></svg><svg width="24" height="24"><use href="#logo-a"/></svg><svg width="16" height="16"><use href="#logo-a"/></svg><span>light</span></div>
+    <h2>A. Spotlight</h2>
+    <p>Three windows, only the chosen one is lit. Says what the app does: the rest stays in the dark. Matches the dark UI.</p>
+  </div>
+
+  <div class="option">
+    <div class="hero"><svg><use href="#logo-b"/></svg></div>
+    <div class="sizes dark"><svg width="48" height="48"><use href="#logo-b"/></svg><svg width="32" height="32"><use href="#logo-b"/></svg><svg width="24" height="24"><use href="#logo-b"/></svg><svg width="16" height="16"><use href="#logo-b"/></svg><span>dark</span></div>
+    <div class="sizes light"><svg width="48" height="48"><use href="#logo-b"/></svg><svg width="32" height="32"><use href="#logo-b"/></svg><svg width="24" height="24"><use href="#logo-b"/></svg><svg width="16" height="16"><use href="#logo-b"/></svg><span>light</span></div>
+    <h2>B. Capture frame</h2>
+    <p>A window inside viewfinder corners: "capture this window". Keeps the green tile of today, so it is the smallest change for people who know the icon.</p>
+  </div>
+
+  <div class="option">
+    <div class="hero"><svg><use href="#logo-c"/></svg></div>
+    <div class="sizes dark"><svg width="48" height="48"><use href="#logo-c"/></svg><svg width="32" height="32"><use href="#logo-c"/></svg><svg width="24" height="24"><use href="#logo-c"/></svg><svg width="16" height="16"><use href="#logo-c"/></svg><span>dark</span></div>
+    <div class="sizes light"><svg width="48" height="48"><use href="#logo-c"/></svg><svg width="32" height="32"><use href="#logo-c"/></svg><svg width="24" height="24"><use href="#logo-c"/></svg><svg width="16" height="16"><use href="#logo-c"/></svg><span>light</span></div>
+    <h2>C. Monogram</h2>
+    <p>A "C" (Capture, Codescovery) holding one window. Simplest shape, the most readable at 16 px in the tray.</p>
+  </div>
+
+  <div class="option">
+    <div class="hero"><img src="../../src/Presentation/CodescoveryCaptureManager.App/Assets/icon.svg" width="168" height="168" alt="Current logo"></div>
+    <div class="sizes dark"><img src="../../src/Presentation/CodescoveryCaptureManager.App/Assets/icon.svg" width="48" height="48" alt=""><img src="../../src/Presentation/CodescoveryCaptureManager.App/Assets/icon.svg" width="32" height="32" alt=""><img src="../../src/Presentation/CodescoveryCaptureManager.App/Assets/icon.svg" width="24" height="24" alt=""><img src="../../src/Presentation/CodescoveryCaptureManager.App/Assets/icon.svg" width="16" height="16" alt=""><span>dark</span></div>
+    <div class="sizes light"><img src="../../src/Presentation/CodescoveryCaptureManager.App/Assets/icon.svg" width="48" height="48" alt=""><img src="../../src/Presentation/CodescoveryCaptureManager.App/Assets/icon.svg" width="32" height="32" alt=""><img src="../../src/Presentation/CodescoveryCaptureManager.App/Assets/icon.svg" width="24" height="24" alt=""><img src="../../src/Presentation/CodescoveryCaptureManager.App/Assets/icon.svg" width="16" height="16" alt=""><span>light</span></div>
+    <h2>Current</h2>
+    <p>Green monitor with a white mark. The mark turns into a blur below 32 px and does not say what the app does.</p>
+  </div>
+</div>
+</body>
+</html>
