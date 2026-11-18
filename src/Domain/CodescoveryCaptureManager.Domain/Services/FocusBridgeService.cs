@@ -26,6 +26,8 @@ namespace CodescoveryCaptureManager.Domain.Services
         private const byte VideoFrameType = 1;
         private const byte KeyFrameFlag = 1;
 
+        private const string AppInfoPath = "/app-info.json";
+        private const string AppName = "Capture Manager";
         private static readonly string BlurredMessage = JsonSerializer.Serialize(new { focused = false });
         private static readonly string PausedMessage = JsonSerializer.Serialize(new { focused = false, paused = true });
 
@@ -177,6 +179,12 @@ namespace CodescoveryCaptureManager.Domain.Services
         {
             try
             {
+                if (IsAppInfoRequest(context.Request))
+                {
+                    await WriteAppInfoAsync(context.Response);
+                    return;
+                }
+
                 if (_site.IsAvailable)
                 {
                     await _site.RespondAsync(context);
@@ -189,6 +197,27 @@ namespace CodescoveryCaptureManager.Domain.Services
             catch (Exception ex)
             {
                 AppLog.Error("Focus bridge site failed.", ex);
+            }
+        }
+
+        private static bool IsAppInfoRequest(HttpListenerRequest request)
+            => request.HttpMethod == "GET" && request.Url.AbsolutePath == AppInfoPath;
+
+        // What the page needs to label itself and pre-fill an issue: name and version, nothing about windows.
+        private static async Task WriteAppInfoAsync(HttpListenerResponse response)
+        {
+            try
+            {
+                var payload = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { name = AppName, version = AppVersion.Current }));
+                response.ContentType = "application/json; charset=utf-8";
+                response.ContentLength64 = payload.Length;
+                response.Headers["X-Content-Type-Options"] = "nosniff";
+                response.Headers["Cache-Control"] = "no-store";
+                await response.OutputStream.WriteAsync(payload, 0, payload.Length);
+            }
+            finally
+            {
+                response.Close();
             }
         }
 

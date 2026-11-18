@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ControlPanel, type Fallback } from './components/ControlPanel';
 import { Stage, type StageNotice } from './components/Stage';
 import { floatingPanelSupported, useFloatingPanel } from './hooks/useFloatingPanel';
+import { useAppVersion } from './hooks/useAppVersion';
 import { useStream, type StreamStatus } from './hooks/useStream';
 import type { BridgeFocus } from './lib/focus';
 import { VideoPlayer } from './lib/videoPlayer';
@@ -13,6 +14,7 @@ export function App() {
   const [fallback, setFallback] = useFallbackSetting();
   const [outputOnly, setOutputOnly] = useState(false);
   const stream = useStream(canvasRef, fallback === 'keep');
+  const appVersion = useAppVersion();
   const notice = resolveNotice(stream.status, stream.focus, stream.hasPicture, fallback);
 
   useEffect(() => {
@@ -28,6 +30,7 @@ export function App() {
       status={stream.status}
       focusedTitle={stream.focus?.focused ? stream.focus.focusedTitle : undefined}
       stats={stream.stats}
+      appVersion={appVersion}
       fallback={fallback}
       floating={floating.isOpen}
       canFloat={floatingPanelSupported}

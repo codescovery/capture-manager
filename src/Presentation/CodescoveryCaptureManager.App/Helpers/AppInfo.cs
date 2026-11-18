@@ -2,7 +2,6 @@ using CodescoveryCaptureManager.Domain.Diagnostics;
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace CodescoveryCaptureManager.App.Helpers
@@ -16,7 +15,7 @@ namespace CodescoveryCaptureManager.App.Helpers
         public const string ReleasesUrl = RepositoryUrl + "/releases";
         public const string LicenseUrl = RepositoryUrl + "/blob/main/LICENSE";
 
-        public static string Version => ReadVersion();
+        public static string Version => AppVersion.Current;
 
         /// <summary>Opens a pre-filled "new issue" page. Only app version and OS are included, nothing about the user's windows.</summary>
         public static string NewIssueUrl()
@@ -55,13 +54,5 @@ namespace CodescoveryCaptureManager.App.Helpers
         // The log path holds the Windows user name, so the issue only says where to find the file.
         private static string BuildIssueTemplate()
             => $"**What happened?**\n\n\n**What did you expect?**\n\n\n**Steps to reproduce**\n1. \n\n**Log**\nSettings > About > Open logs folder, then attach `{RollingFileLog.FileName}` if it helps.\n\n---\n{DiagnosticInfo()}";
-
-        private static string ReadVersion()
-        {
-            var informational = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-            if (string.IsNullOrWhiteSpace(informational)) return "dev";
-            var buildMetadata = informational.IndexOf('+');
-            return buildMetadata < 0 ? informational : informational.Substring(0, buildMetadata);
-        }
     }
 }

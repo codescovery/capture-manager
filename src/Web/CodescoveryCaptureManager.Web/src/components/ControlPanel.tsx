@@ -1,4 +1,5 @@
 import type { StreamStats, StreamStatus } from '../hooks/useStream';
+import { buildIssueUrl, REPOSITORY_URL } from '../lib/about';
 
 export type Fallback = 'message' | 'keep';
 
@@ -12,6 +13,7 @@ interface ControlPanelProps {
   status: StreamStatus;
   focusedTitle: string | undefined;
   stats: StreamStats;
+  appVersion: string | null;
   fallback: Fallback;
   floating: boolean;
   canFloat: boolean;
@@ -65,6 +67,22 @@ export function ControlPanel(props: ControlPanelProps) {
         </fieldset>
         <p className="muted">Which windows are shared is chosen in the Capture Manager desktop app.</p>
       </section>
+
+      <About appVersion={props.appVersion} />
     </div>
+  );
+}
+
+function About({ appVersion }: { appVersion: string | null }) {
+  return (
+    <section>
+      <h2>About</h2>
+      <p className="about-version">Capture Manager {appVersion ?? ''}</p>
+      <p className="links">
+        <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">GitHub</a>
+        <a href={buildIssueUrl(appVersion, navigator.userAgent)} target="_blank" rel="noreferrer">Report an issue</a>
+      </p>
+      <p className="muted">The report is pre-filled with the app version and your browser. Nothing about your windows is included.</p>
+    </section>
   );
 }

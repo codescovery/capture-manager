@@ -11,6 +11,7 @@ Replaces the earlier plain HTML/JS prototype (`getDisplayMedia` in the browser, 
 - **Output only** (Esc leaves) hides panel/header so only the video is in the shared tab. **Float controls**: Document Picture-in-Picture (Chrome/Edge 116+) hosts the panel through a React portal (`hooks/useFloatingPanel.tsx`); the in-page panel is hidden while floating.
 - Panel shows connection state, focused window title and live `WxH · fps · Mbps`.
 - Which windows are shared is chosen only in the desktop app (picker / profiles). The web has no source list.
+- **About** section in the panel: app version, GitHub link, "Report an issue" (`lib/about.ts` `buildIssueUrl`: pre-filled with app version and the browser's user agent, nothing about windows). The version comes from `GET /app-info.json` (`hooks/useAppVersion.ts`); on the Vite dev server that request fails and the version is simply left out. The section is part of the panel, so it is hidden in Output only.
 
 ## Stream (desktop side, `Domain/Streaming`)
 ```
@@ -41,6 +42,7 @@ CaptureService.ProcessFrame ──IFrameTap.OnFrame(texture, w, h)──▶ Vide
 Client -> server: the text `key` = request a key frame (only message accepted).
 
 - Focus text from `MonitoredWindowFocused` (deduped by HWND); blur from `MonitoredWindowsBlurred` (`IFocusBridge.PublishBlurred`). Initial state is blurred. Publishing a new focus also requests a key frame.
+- `GET /app-info.json` -> `{ "name": "Capture Manager", "version": "1.4.0" }` (`FocusBridgeService.WriteAppInfoAsync`, version from `Diagnostics/AppVersion`, `no-store`). Answered before the static site, also when the page itself is not embedded.
 - Security: loopback only; only the picked window being shown is ever streamed (nothing else leaves the process); WebSocket `Origin` must be loopback or in env var `CAPTURE_MANAGER_ALLOWED_ORIGINS`. Static site: GET/HEAD, embedded resources only, `nosniff`, `no-cache`; missing `web/index.html` resource -> plain requests get 426. Port taken -> bridge logs and stays off.
 
 ## Serving and build
