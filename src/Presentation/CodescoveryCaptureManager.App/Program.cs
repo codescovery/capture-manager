@@ -1,4 +1,5 @@
 using System;
+using CodescoveryCaptureManager.App.Tray;
 using Velopack;
 
 namespace CodescoveryCaptureManager.App
@@ -10,7 +11,10 @@ namespace CodescoveryCaptureManager.App
         {
             VelopackApp.Build().Run();
 
-            var app = new App();
+            using var instance = SingleInstance.TryAcquire();
+            if (instance == null) return;
+
+            var app = new App(instance);
             app.InitializeComponent();
             app.Run();
         }

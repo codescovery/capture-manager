@@ -12,7 +12,7 @@
 	  <Product>CodescoveryCaptureManager</Product>
 	  <PackageId>CodescoveryCaptureManager</PackageId>
 	  <PackageIcon>icon32.png</PackageIcon>
-	  <RepositoryUrl>https://github.com/codescovery/captureManager</RepositoryUrl>
+	  <RepositoryUrl>https://github.com/codescovery/capture-manager</RepositoryUrl>
 	  <RepositoryType>git</RepositoryType>
 	  <Copyright>Codescovery</Copyright>
 	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -24,6 +24,7 @@
     <None Remove="Assets\icon.png" />
     <None Remove="Assets\icon.svg" />
     <None Remove="Assets\menu.png" />
+    <PackageReference Include="H.NotifyIcon.Wpf" Version="2.4.1" />
     <PackageReference Include="MaterialDesignThemes" Version="5.2.1" />
     <PackageReference Include="System.Drawing.Common" Version="9.0.0" />
     <PackageReference Include="Velopack" Version="1.2.161" />

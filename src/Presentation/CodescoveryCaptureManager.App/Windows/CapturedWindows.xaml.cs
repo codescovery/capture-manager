@@ -11,6 +11,8 @@ using System.Windows.Interop;
 using Windows.Graphics.Capture;
 using Windows.UI.Composition;
 using WindowsDesktop;
+using CodescoveryCaptureManager.App.Helpers;
+using CodescoveryCaptureManager.App.Tray;
 using CodescoveryCaptureManager.Domain.Helpers;
 using CodescoveryCaptureManager.Domain.Interfaces;
 using CodescoveryCaptureManager.Domain.Profiles;
@@ -151,6 +153,10 @@ namespace CodescoveryCaptureManager.App.Windows
                 OnMonitoredWindowsBlurred();
         }
 
+        private void About_OnClick(object sender, RoutedEventArgs e) => AboutDialog.Show(this);
+
+        private void ReportIssue_OnClick(object sender, RoutedEventArgs e) => AppInfo.OpenInBrowser(AppInfo.NewIssueUrl());
+
         private void FallbackMessage_OnClick(object sender, RoutedEventArgs e) => SetFallback(FocusFallbackMode.Message);
 
         private void FallbackKeepLast_OnClick(object sender, RoutedEventArgs e) => SetFallback(FocusFallbackMode.KeepLast);
@@ -258,7 +264,7 @@ namespace CodescoveryCaptureManager.App.Windows
             => string.Join(Environment.NewLine, profile.Rules.Select(rule =>
                 rule.TitleMatch == TitleMatchMode.Any ? rule.ProcessName : $"{rule.ProcessName}: {rule.TitleMatch} \"{rule.TitlePattern}\""));
 
-        private void ApplyProfile(Guid profileId)
+        public void ApplyProfile(Guid profileId)
         {
             try
             {
@@ -363,6 +369,8 @@ namespace CodescoveryCaptureManager.App.Windows
             //CurrentWindowTitle.Text = Title;
             //CreateOpenedWindowsMenuItems(_windowsProcessServices.GetOpenedWindows(this));
             ConfigureFallbackMenu();
+            RunInTray.IsChecked = !_profileService.Settings.ExitOnClose;
+            StartWithWindows.IsChecked = StartupRegistration.IsEnabled();
             ConfigureVirtualDesktopActions();
             CurrentWindowTitleOnTextChanged(this,null);
         }
@@ -425,8 +433,38 @@ namespace CodescoveryCaptureManager.App.Windows
 
         private void CapturedWindows_OnClosing(object sender, CancelEventArgs e)
         {
+            var exiting = ((App)Application.Current).ExitRequested || _profileService.Settings.ExitOnClose;
+            if (!exiting)
+            {
+                e.Cancel = true;
+                Hide();
+                return;
+            }
             Dispose();
         }
+
+        /// <summary>Starts with the window hidden (tray only). The window is shown once so Composition binds to its HWND.</summary>
+        public void StartHidden()
+        {
+            ShowActivated = false;
+            Show();
+            Hide();
+        }
+
+        public void ShowFromTray()
+        {
+            if (!IsVisible) Show();
+            if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+            Activate();
+        }
+
+        public void ShowAbout() => AboutDialog.Show(this);
+
+        private void RunInTray_OnClick(object sender, RoutedEventArgs e)
+            => _profileService.UpdateSettings(settings => settings with { ExitOnClose = !RunInTray.IsChecked });
+
+        private void StartWithWindows_OnClick(object sender, RoutedEventArgs e)
+            => StartupRegistration.SetEnabled(StartWithWindows.IsChecked);
 
         private void MoveToVirtualDesktop_OnClick(object sender, RoutedEventArgs e)
         {

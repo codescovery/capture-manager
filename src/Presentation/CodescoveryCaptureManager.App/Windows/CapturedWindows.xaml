@@ -63,6 +63,14 @@
                                     <MenuItem Header="Close virtual desktop" Name="CloseVirtualDesktop"
                                               Click="CloseVirtualDesktop_OnClick" IsEnabled="False" />
                                 </MenuItem>
+                                <Separator />
+                                <MenuItem Header="Keep running in tray when closed" Name="RunInTray" IsCheckable="True"
+                                          Click="RunInTray_OnClick" />
+                                <MenuItem Header="Start with Windows (in tray)" Name="StartWithWindows" IsCheckable="True"
+                                          Click="StartWithWindows_OnClick" />
+                                <Separator />
+                                <MenuItem Header="Report an issue" Click="ReportIssue_OnClick" />
+                                <MenuItem Header="About Capture Manager" Click="About_OnClick" />
                             </ContextMenu>
                         </Button.ContextMenu>
                     </Button>
