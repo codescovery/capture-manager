@@ -9,6 +9,7 @@ Fixed 2026-11-02 (see decisions.md): monitoring loop try/catch + observed task, 
 3. **Capture stop shows empty surface**: no placeholder/status shown to user when capture stops (closed window, error).
 4. **Elevated windows**: app runs `asInvoker`; elevated targets can't be captured, no message.
 5. Logging and crash handlers exist (logging.md), but the crash handlers were never seen firing in a real crash.
+5b. Capture kept streaming during a pause, **seen once**: the viewer got the `paused` message and 203 more frames, and the stream pipeline was not rebuilt on resume, which fits a capture session nobody referenced any more. Suspected cause: `WindowCaptureService.StartCapture` re-entered while WinRT calls pumped messages; a request counter now discards the superseded capture. Not reproduced before or after (12 clean runs), so the fix is unproven. Same mechanism would also defeat the blank-on-blur rule.
 5a. Stream (stream-testing.md): 120 fps cap gives 82 fps on a 164 Hz display; encoder rate control is told 60 fps while fed up to 120; occasional unexplained stream gaps (up to 136 ms not attributable to the source); never tested with real content.
 6. Dictionary is mutated from monitoring tick and picker, both on UI thread; keep it that way or add locking.
 

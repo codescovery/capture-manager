@@ -17,6 +17,7 @@ using WindowsDesktop;
 using CodescoveryCaptureManager.App.Helpers;
 using CodescoveryCaptureManager.App.Tray;
 using CodescoveryCaptureManager.Domain.Helpers;
+using CodescoveryCaptureManager.Domain.Hotkeys;
 using CodescoveryCaptureManager.Domain.Interfaces;
 using CodescoveryCaptureManager.Domain.Profiles;
 using CodescoveryCaptureManager.Domain.Services;
@@ -54,6 +55,8 @@ namespace CodescoveryCaptureManager.App.Windows
         private readonly IVideoStream _videoStream;
         private FocusFallbackMode _fallbackMode = FocusFallbackMode.Message;
         private IntPtr _fallbackWindowHandle;
+        private GlobalHotkey _pauseHotkey;
+        private bool _isPaused;
 
         private readonly IProfileService _profileService;
 
@@ -126,6 +129,8 @@ namespace CodescoveryCaptureManager.App.Windows
 
         private void OnMonitoredWindowsBlurred()
         {
+            if (_isPaused) return;
+
             _focusBridge.PublishBlurred();
             ApplyFocusFallback();
             RefreshView();
@@ -141,6 +146,7 @@ namespace CodescoveryCaptureManager.App.Windows
 
         private bool TryShowFallbackWindow()
         {
+            if (_isPaused) return false;
             if (!_capturableWindowsMonitoringService.IsMonitored(_fallbackWindowHandle))
             {
                 SetFallback(FocusFallbackMode.Message);
@@ -189,13 +195,19 @@ namespace CodescoveryCaptureManager.App.Windows
             var isWaitingForProfile = !hasMonitoredWindows && _profileService.Active != null;
             var isSetUp = hasMonitoredWindows || isWaitingForProfile;
 
-            EmptyState.Visibility = isSetUp ? Visibility.Collapsed : Visibility.Visible;
-            NoFocusState.Visibility = isSetUp && !isShowingWindow ? Visibility.Visible : Visibility.Collapsed;
+            PausedState.Visibility = _isPaused ? Visibility.Visible : Visibility.Collapsed;
+            EmptyState.Visibility = isSetUp || _isPaused ? Visibility.Collapsed : Visibility.Visible;
+            NoFocusState.Visibility = isSetUp && !isShowingWindow && !_isPaused ? Visibility.Visible : Visibility.Collapsed;
             ShowStatus(hasMonitoredWindows, isShowingWindow, isWaitingForProfile);
         }
 
         private void ShowStatus(bool hasMonitoredWindows, bool isShowingWindow, bool isWaitingForProfile)
         {
+            if (_isPaused)
+            {
+                SetStatus("DangerBrush", "Paused", $"Nothing is shown or streamed  \u00B7  {DescribeResume()}");
+                return;
+            }
             if (isWaitingForProfile)
             {
                 SetStatus("WarningBrush", "Waiting", $"Profile {_profileService.Active.Name}  \u00B7  its windows appear here when you open and focus them");
@@ -212,11 +224,99 @@ namespace CodescoveryCaptureManager.App.Windows
                 return;
             }
             var selected = _capturableWindowsMonitoringService.GetMonitoredWindows().Count;
-            SetStatus("WarningBrush", "Paused", $"{selected} window{(selected == 1 ? string.Empty : "s")} selected  \u00B7  nothing is shown until you focus one");
+            SetStatus("WarningBrush", "Standby", $"{selected} window{(selected == 1 ? string.Empty : "s")} selected  \u00B7  nothing is shown until you focus one");
+        }
+
+        private string DescribeResume()
+            => IsPauseHotkeyActive ? $"press {PauseHotkeyText} or the pause button to resume" : "use the pause button to resume";
+
+        internal bool IsPaused => _isPaused;
+
+        /// <summary>Raised after the user pauses or resumes (button, tray or hotkey).</summary>
+        internal event Action PauseChanged;
+
+        internal void TogglePause() => SetPaused(!_isPaused);
+
+        /// <summary>
+        /// Pause is the user's "hide everything now": capture stops and stays stopped whatever gets focus, and it
+        /// overrides the keep-last and fixed-window fallbacks, here and in every web viewer.
+        /// </summary>
+        internal void SetPaused(bool paused)
+        {
+            if (_isPaused == paused) return;
+
+            _isPaused = paused;
+            if (paused) EnterPause();
+            else LeavePause();
+            AppLog.Info(paused ? "Paused by the user." : "Resumed by the user.");
+            RefreshView();
+            PauseChanged?.Invoke();
+        }
+
+        private void EnterPause()
+        {
+            _windowCaptureService?.StopCapture();
+            _focusBridge.PublishPaused();
+        }
+
+        private void LeavePause()
+        {
+            _focusBridge.PublishBlurred();
+            _capturableWindowsMonitoringService.SyncWithForegroundWindow();
+            var isShowingWindow = _windowCaptureService?.IsCapturing() ?? false;
+            if (!isShowingWindow && _fallbackMode == FocusFallbackMode.FixedWindow) TryShowFallbackWindow();
+        }
+
+        private void Pause_OnClick(object sender, RoutedEventArgs e) => TogglePause();
+
+        internal string PauseHotkeyText => _profileService.Settings.PauseHotkey ?? string.Empty;
+
+        internal bool IsPauseHotkeyActive => _pauseHotkey?.IsRegistered ?? false;
+
+        /// <summary>Saves and registers the hotkey (empty text = none). False when Windows refused the combination.</summary>
+        internal bool SetPauseHotkey(string text)
+        {
+            _profileService.UpdateSettings(settings => settings with { PauseHotkey = text ?? string.Empty });
+            return RegisterPauseHotkey();
+        }
+
+        /// <summary>Off while the settings box records a new combination, so pressing the current one does not pause.</summary>
+        internal void SuspendPauseHotkey() => _pauseHotkey?.Unregister();
+
+        internal bool RegisterPauseHotkey()
+        {
+            if (_pauseHotkey == null) return false;
+
+            _pauseHotkey.Unregister();
+            var registered = string.IsNullOrWhiteSpace(PauseHotkeyText) || TryRegister(PauseHotkeyText);
+            UpdatePauseButton();
+            return registered;
+        }
+
+        private bool TryRegister(string text)
+        {
+            if (!Hotkey.TryParse(text, out var hotkey))
+            {
+                AppLog.Warning($"Pause hotkey \"{text}\" is not a usable combination.");
+                return false;
+            }
+
+            if (_pauseHotkey.Register(hotkey)) return true;
+            AppLog.Warning($"Pause hotkey {hotkey} not registered: another program uses it.");
+            return false;
+        }
+
+        private void UpdatePauseButton()
+        {
+            PauseIcon.Kind = _isPaused ? PackIconKind.Play : PackIconKind.Pause;
+            var action = _isPaused ? "Resume sharing" : "Pause: hide everything from viewers";
+            PauseButton.ToolTip = IsPauseHotkeyActive ? $"{action} ({PauseHotkeyText})" : action;
+            System.Windows.Automation.AutomationProperties.SetName(PauseButton, _isPaused ? "Resume" : "Pause");
         }
 
         private void SetStatus(string dotBrushKey, string pill, string detail)
         {
+            UpdatePauseButton();
             StatusDot.Fill = (Brush)FindResource(dotBrushKey);
             StatusPillText.Text = pill;
             StatusText.Text = detail;
@@ -403,7 +503,7 @@ namespace CodescoveryCaptureManager.App.Windows
 
         private void CapturableWindowsMonitoringServiceOnMonitoredWindowFocused(CapturableWindow activecapturablewindow)
         {
-            if (_windowCaptureService == null) return;
+            if (_windowCaptureService == null || _isPaused) return;
             _focusBridge.Publish(activecapturablewindow);
             ShowCapturedWindow(activecapturablewindow);
         }
@@ -412,7 +512,7 @@ namespace CodescoveryCaptureManager.App.Windows
         {
             try
             {
-                if (_windowCaptureService.IsCapturing(window.Handle)) return;
+                if (_isPaused || _windowCaptureService.IsCapturing(window.Handle)) return;
 
                 var item = CaptureHelper.CreateItemForWindow(window.Handle);
                 if (item == null) return;
@@ -445,6 +545,7 @@ namespace CodescoveryCaptureManager.App.Windows
 
         public void Dispose()
         {
+            _pauseHotkey?.Dispose();
             StopCapturing();
             _focusBridge?.Dispose();
             _windowsProcessServices?.Dispose();
@@ -456,6 +557,8 @@ namespace CodescoveryCaptureManager.App.Windows
             _compositionTarget = InitializeDesktopWindowTarget();
             _compositionTarget.Root = _containerVisual;
             _containerVisual.Children.InsertAtTop(_windowCaptureService.GetVisual());
+            _pauseHotkey = new GlobalHotkey(this, TogglePause);
+            RegisterPauseHotkey();
             UpdateProfileLabel();
             UpdateCaptureBounds();
             RefreshStreamStatus();

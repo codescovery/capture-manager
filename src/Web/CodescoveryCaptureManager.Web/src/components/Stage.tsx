@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
 
-export type StageNotice = 'connecting' | 'offline' | 'no-focus' | 'waiting' | 'unsupported';
+export type StageNotice = 'connecting' | 'offline' | 'paused' | 'no-focus' | 'waiting' | 'unsupported';
 
 const NOTICES: Record<StageNotice, { title: string; text: string }> = {
   connecting: { title: 'Connecting to the desktop app…', text: 'Looking for Capture Manager on this computer.' },
@@ -8,6 +8,7 @@ const NOTICES: Record<StageNotice, { title: string; text: string }> = {
     title: 'Capture Manager is not running',
     text: 'Start the desktop app, then pick the windows you want to expose. This page reconnects by itself.',
   },
+  paused: { title: 'Sharing is paused', text: 'The picture comes back when sharing is resumed in Capture Manager.' },
   'no-focus': {
     title: 'No selected window is focused',
     text: 'Focus one of the windows you picked in Capture Manager to show it here.',

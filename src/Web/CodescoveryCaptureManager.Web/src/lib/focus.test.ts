@@ -6,6 +6,10 @@ describe('parseBridgeMessage', () => {
     expect(parseBridgeMessage('{"focused":false}')).toEqual({ focused: false });
   });
 
+  it('reads a pause message', () => {
+    expect(parseBridgeMessage('{"focused":false,"paused":true}')).toEqual({ focused: false, paused: true });
+  });
+
   it('reads a focus message', () => {
     const focus = parseBridgeMessage('{"focused":true,"focusedTitle":"a.txt - Notepad","processName":"notepad","handle":1180}');
     expect(focus).toEqual({ focused: true, focusedTitle: 'a.txt - Notepad', processName: 'notepad', handle: 1180 });

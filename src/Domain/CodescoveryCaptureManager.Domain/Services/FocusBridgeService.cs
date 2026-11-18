@@ -27,6 +27,7 @@ namespace CodescoveryCaptureManager.Domain.Services
         private const byte KeyFrameFlag = 1;
 
         private static readonly string BlurredMessage = JsonSerializer.Serialize(new { focused = false });
+        private static readonly string PausedMessage = JsonSerializer.Serialize(new { focused = false, paused = true });
 
         private readonly FocusBridgeOptions _options;
         private readonly IVideoStream _videoStream;
@@ -80,12 +81,16 @@ namespace CodescoveryCaptureManager.Domain.Services
             _ = BroadcastTextAsync(_lastMessage);
         }
 
-        public void PublishBlurred()
+        public void PublishBlurred() => PublishUnfocused(BlurredMessage);
+
+        public void PublishPaused() => PublishUnfocused(PausedMessage);
+
+        private void PublishUnfocused(string message)
         {
-            if (!_started || _lastPublishedHandle == IntPtr.Zero) return;
+            if (!_started || _lastMessage == message) return;
 
             _lastPublishedHandle = IntPtr.Zero;
-            _lastMessage = BlurredMessage;
+            _lastMessage = message;
             _ = BroadcastTextAsync(_lastMessage);
         }
 

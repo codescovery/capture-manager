@@ -3,8 +3,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using CodescoveryCaptureManager.App.Helpers;
 using CodescoveryCaptureManager.App.Tray;
+using CodescoveryCaptureManager.Domain.Hotkeys;
 using CodescoveryCaptureManager.Domain.Interfaces;
 using CodescoveryCaptureManager.Domain.Structs;
 
@@ -65,7 +67,73 @@ namespace CodescoveryCaptureManager.App.Windows
             StartWithWindows.IsChecked = StartupRegistration.IsEnabled();
             VirtualDesktopCard.Visibility = VisibleWhen(_captureWindow.CanUseVirtualDesktop);
             UpdateVirtualDesktopButton();
+            ShowPauseHotkey(_captureWindow.IsPauseHotkeyActive);
         }
+
+        private void ShowPauseHotkey(bool isActive)
+        {
+            var text = _captureWindow.PauseHotkeyText;
+            PauseHotkey.Text = text;
+            ClearPauseHotkey.IsEnabled = text.Length > 0;
+            if (text.Length == 0) ShowPauseHotkeyHint("No hotkey. Click the box and press a combination such as Ctrl+Alt+P.");
+            else if (isActive) ShowPauseHotkeyHint("Active. Click the box and press another combination to change it.");
+            else ShowPauseHotkeyHint("Not active: another program already uses this combination. Choose another one.", isWarning: true);
+        }
+
+        private void ShowPauseHotkeyHint(string text, bool isWarning = false)
+        {
+            PauseHotkeyHint.Text = text;
+            PauseHotkeyHint.Foreground = (System.Windows.Media.Brush)FindResource(isWarning ? "WarningBrush" : "MutedBrush");
+        }
+
+        // While the box records keys the current hotkey is off, otherwise pressing it again would pause.
+        private void PauseHotkey_OnGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            _captureWindow.SuspendPauseHotkey();
+            ShowPauseHotkeyHint("Press the new combination (Esc to cancel).");
+        }
+
+        private void PauseHotkey_OnLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+            => ShowPauseHotkey(_captureWindow.RegisterPauseHotkey());
+
+        private void PauseHotkey_OnPreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            var key = e.Key == Key.System ? e.SystemKey : e.Key;
+            if (key == Key.Tab) return;
+
+            e.Handled = true;
+            if (key == Key.Escape)
+            {
+                Keyboard.ClearFocus();
+                return;
+            }
+            if (IsModifierKey(key)) return;
+
+            var hotkey = new Hotkey(ReadModifiers(), KeyInterop.VirtualKeyFromKey(key));
+            if (!hotkey.IsValid)
+            {
+                ShowPauseHotkeyHint("Use Ctrl, Alt or Win together with a letter, a digit or an F key.", isWarning: true);
+                return;
+            }
+            ShowPauseHotkey(_captureWindow.SetPauseHotkey(hotkey.ToString()));
+            _captureWindow.SuspendPauseHotkey();
+        }
+
+        private static bool IsModifierKey(Key key)
+            => key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin;
+
+        private static HotkeyModifiers ReadModifiers()
+        {
+            var modifiers = HotkeyModifiers.None;
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) modifiers |= HotkeyModifiers.Control;
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) modifiers |= HotkeyModifiers.Alt;
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) modifiers |= HotkeyModifiers.Shift;
+            if (Keyboard.IsKeyDown(Key.LWin) || Keyboard.IsKeyDown(Key.RWin)) modifiers |= HotkeyModifiers.Windows;
+            return modifiers;
+        }
+
+        private void ClearPauseHotkey_OnClick(object sender, RoutedEventArgs e)
+            => ShowPauseHotkey(_captureWindow.SetPauseHotkey(string.Empty));
 
         private void ShareTitle_OnLostFocus(object sender, RoutedEventArgs e)
         {

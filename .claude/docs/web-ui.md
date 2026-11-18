@@ -35,7 +35,9 @@ CaptureService.ProcessFrame ──IFrameTap.OnFrame(texture, w, h)──▶ Vide
 ```json
 { "focused": true, "focusedTitle": "Document1 - Word", "processName": "WINWORD", "handle": 1180 }
 { "focused": false }
+{ "focused": false, "paused": true }
 ```
+`paused` = the user paused sharing in the desktop app (`IFocusBridge.PublishPaused`): the page clears the picture and shows "Sharing is paused" **even when "Keep the last window" is on**. Sent again as plain `{focused:false}` or a focus message on resume.
 Client -> server: the text `key` = request a key frame (only message accepted).
 
 - Focus text from `MonitoredWindowFocused` (deduped by HWND); blur from `MonitoredWindowsBlurred` (`IFocusBridge.PublishBlurred`). Initial state is blurred. Publishing a new focus also requests a key frame.

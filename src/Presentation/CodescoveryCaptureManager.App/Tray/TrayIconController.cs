@@ -20,6 +20,7 @@ namespace CodescoveryCaptureManager.App.Tray
         private readonly Action _exit;
         private readonly TaskbarIcon _icon;
         private readonly MenuItem _profilesMenu = new MenuItem { Header = "Profiles" };
+        private readonly MenuItem _pauseItem = new MenuItem();
 
         public TrayIconController(CapturedWindows window, IProfileService profiles, Action exit)
         {
@@ -34,6 +35,9 @@ namespace CodescoveryCaptureManager.App.Tray
                 ContextMenu = BuildMenu(),
             };
             _icon.TrayMouseDoubleClick += (_, _) => _window.ShowFromTray();
+            _pauseItem.Click += (_, _) => _window.TogglePause();
+            _window.PauseChanged += ShowPauseState;
+            ShowPauseState();
             _icon.ForceCreate();
         }
 
@@ -50,12 +54,19 @@ namespace CodescoveryCaptureManager.App.Tray
             menu.Items.Add(Item("Open Capture Manager", () => _window.ShowFromTray(), bold: true));
             menu.Items.Add(Item("Open web viewer", () => AppInfo.OpenInBrowser(WebViewerUrl)));
             menu.Items.Add(new Separator());
+            menu.Items.Add(_pauseItem);
             menu.Items.Add(_profilesMenu);
             menu.Items.Add(new Separator());
             menu.Items.Add(Item("About", () => _window.ShowAbout()));
             menu.Items.Add(Item("Exit", _exit));
             menu.Opened += (_, _) => RebuildProfiles();
             return menu;
+        }
+
+        private void ShowPauseState()
+        {
+            _pauseItem.Header = _window.IsPaused ? "Resume sharing" : "Pause sharing";
+            _icon.ToolTipText = _window.IsPaused ? $"{AppInfo.Name} (paused)" : AppInfo.Name;
         }
 
         private void RebuildProfiles()

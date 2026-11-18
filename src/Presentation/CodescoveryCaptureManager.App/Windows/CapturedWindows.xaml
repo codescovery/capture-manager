@@ -96,6 +96,11 @@
                             </Button.ContextMenu>
                         </Button>
                         <Border Width="1" Height="18" Margin="6,0" Background="{StaticResource StrokeBrush}" />
+                        <Button Name="PauseButton" Style="{StaticResource TitleBarIconButton}"
+                                Click="Pause_OnClick" AutomationProperties.Name="Pause"
+                                ToolTip="Pause: hide everything from viewers">
+                            <materialDesign:PackIcon Name="PauseIcon" Kind="Pause" Width="16" Height="16" />
+                        </Button>
                         <Button Name="CleanViewButton" Style="{StaticResource TitleBarIconButton}"
                                 Click="CleanView_OnClick" AutomationProperties.Name="Hide controls"
                                 ToolTip="Hide these controls so viewers see only the window (Ctrl+H)">
@@ -221,6 +226,20 @@
                         <Button Content="Open web viewer" Name="EmptyStateWebViewerButton" Margin="8,0,0,0"
                                 Style="{StaticResource SecondaryButton}" Click="OpenWebViewer_OnClick" />
                     </StackPanel>
+                </StackPanel>
+
+                <StackPanel Name="PausedState" Visibility="Collapsed" HorizontalAlignment="Center"
+                            VerticalAlignment="Center" MaxWidth="420">
+                    <Border Width="56" Height="56" CornerRadius="28" Background="{StaticResource CardBrush}"
+                            BorderBrush="{StaticResource StrokeBrush}" BorderThickness="1" HorizontalAlignment="Center">
+                        <materialDesign:PackIcon Kind="Pause" Width="26" Height="26"
+                                                 Foreground="{StaticResource MutedBrush}"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="Paused" Style="{StaticResource TitleText}" FontSize="18"
+                               Margin="0,14,0,4" HorizontalAlignment="Center" TextAlignment="Center" />
+                    <TextBlock Style="{StaticResource MutedText}" FontSize="13" TextAlignment="Center"
+                               Text="Nothing is being shared, whatever window you focus. Resume to share again." />
                 </StackPanel>
 
                 <StackPanel Name="NoFocusState" Visibility="Collapsed" HorizontalAlignment="Center"

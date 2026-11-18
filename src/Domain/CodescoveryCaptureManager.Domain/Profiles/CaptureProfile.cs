@@ -12,5 +12,9 @@ namespace CodescoveryCaptureManager.Domain.Profiles
     /// <summary>Outcome of applying a profile: how many windows were bound and which rules found none yet.</summary>
     public sealed record ProfileApplyResult(int BoundWindows, IReadOnlyList<WindowRule> WaitingRules);
 
-    public sealed record AppSettings(Guid? LastProfileId = null, string FallbackMode = "Message", bool ExitOnClose = false, string WindowTitle = null);
+    /// <summary><c>PauseHotkey</c>: text form of a <see cref="Hotkeys.Hotkey"/>; empty = no hotkey.</summary>
+    public sealed record AppSettings(Guid? LastProfileId = null, string FallbackMode = "Message", bool ExitOnClose = false, string WindowTitle = null, string PauseHotkey = AppSettings.DefaultPauseHotkey)
+    {
+        public const string DefaultPauseHotkey = "Ctrl+Alt+P";
+    }
 }

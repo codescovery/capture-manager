@@ -84,7 +84,8 @@ export function useStream(canvasRef: RefObject<HTMLCanvasElement>, keepLast: boo
   }, [canvasRef]);
 
   useEffect(() => {
-    if (focus?.focused !== false || keepLast) return;
+    if (focus?.focused !== false) return;
+    if (keepLast && !focus.paused) return;
     playerRef.current?.clear();
     setHasPicture(false);
   }, [focus, keepLast]);

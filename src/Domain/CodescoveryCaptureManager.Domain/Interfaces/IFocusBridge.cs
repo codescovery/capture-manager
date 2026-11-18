@@ -17,5 +17,8 @@ namespace CodescoveryCaptureManager.Domain.Interfaces
         void Start();
         void Publish(CapturableWindow focusedWindow);
         void PublishBlurred();
+
+        /// <summary>The user paused sharing: viewers must blank, even the ones set to keep the last picture.</summary>
+        void PublishPaused();
     }
 }

@@ -132,6 +132,24 @@
                         </DockPanel>
                     </Border>
 
+                    <Border Style="{StaticResource SettingCard}">
+                        <StackPanel>
+                            <TextBlock Text="Pause hotkey" Style="{StaticResource BodyText}" />
+                            <TextBlock Style="{StaticResource MutedText}" Margin="0,2,0,10"
+                                       Text="Works from any program: hides everything from viewers at once. Press it again to resume." />
+                            <DockPanel>
+                                <Button Name="ClearPauseHotkey" DockPanel.Dock="Right" Content="Clear" Margin="8,0,0,0"
+                                        Style="{StaticResource SecondaryButton}" Click="ClearPauseHotkey_OnClick" />
+                                <TextBox Name="PauseHotkey" IsReadOnly="True" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         Padding="10,8" AutomationProperties.Name="Pause hotkey"
+                                         PreviewKeyDown="PauseHotkey_OnPreviewKeyDown"
+                                         GotKeyboardFocus="PauseHotkey_OnGotKeyboardFocus"
+                                         LostKeyboardFocus="PauseHotkey_OnLostKeyboardFocus" />
+                            </DockPanel>
+                            <TextBlock Name="PauseHotkeyHint" Style="{StaticResource MutedText}" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Border>
+
                     <Border Name="VirtualDesktopCard" Style="{StaticResource SettingCard}">
                         <DockPanel>
                             <Button Name="VirtualDesktopButton" DockPanel.Dock="Right" Margin="16,0,0,0"

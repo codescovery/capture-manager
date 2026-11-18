@@ -66,6 +66,7 @@ function resolveNotice(status: StreamStatus, focus: BridgeFocus | null, hasPictu
   if (!VideoPlayer.isSupported()) return 'unsupported';
   if (status === 'offline') return 'offline';
   if (status === 'connecting') return 'connecting';
+  if (focus?.paused) return 'paused';
   if (!focus || !focus.focused) return fallback === 'keep' && hasPicture ? null : 'no-focus';
   return hasPicture ? null : 'waiting';
 }
