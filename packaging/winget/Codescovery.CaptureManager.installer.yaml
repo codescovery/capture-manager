@@ -1,13 +1,19 @@
-# Template for the first manual submission. Replace version, URL and hash.
+# Template for the first manual submission. Replace version, URL and hash in the three files.
 PackageIdentifier: Codescovery.CaptureManager
 PackageVersion: 0.0.0
 InstallerType: exe
+Scope: user
+InstallModes:
+  - silent
+  - silentWithProgress
 InstallerSwitches:
   Silent: --silent
   SilentWithProgress: --silent
+UpgradeBehavior: install
 Installers:
   - Architecture: x64
     InstallerUrl: https://github.com/codescovery/capture-manager/releases/download/v0.0.0/CodescoveryCaptureManager-win-Setup.exe
     InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
+    ProductCode: CodescoveryCaptureManager
 ManifestType: installer
 ManifestVersion: 1.6.0

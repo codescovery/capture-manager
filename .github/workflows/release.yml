@@ -46,7 +46,6 @@ jobs:
           --self-contained true
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:EnableCompressionInSingleFile=true
           -p:Version=${{ steps.version.outputs.value }}
           --output artifacts/publish
 
@@ -60,8 +59,10 @@ jobs:
           --packId ${{ env.PACK_ID }}
           --packVersion ${{ steps.version.outputs.value }}
           --packDir artifacts/publish
+          --runtime win-x64
           --mainExe CodescoveryCaptureManager.App.exe
           --packTitle "Codescovery Capture Manager"
+          --packAuthors "Codescovery"
           --icon src/Presentation/CodescoveryCaptureManager.App/Assets/icon.ico
 
       - name: Upload to GitHub release

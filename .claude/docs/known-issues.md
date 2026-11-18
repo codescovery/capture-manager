@@ -16,5 +16,5 @@ Fixed 2026-11-02 (see decisions.md): monitoring loop try/catch + observed task, 
 10. Picker thumbnails: `PrintWindow`, then one Graphics Capture frame as fallback. Minimized windows cannot be previewed; some overlay/protected windows may render black. Picker/new toolbar not yet verified visually by a human; no live refresh of the window list while open.
 13. No MVVM: code-behind drives both windows (picker uses a small item view-model only).
 15. `src/.vs`, `src/.idea`, `*.csproj.user` tracked in git (check .gitignore).
-16. Few tests (xUnit only for profiles; UI via UIA scripts); auto-update untested (Velopack wired but untested end to end: see release-and-distribution.md).
+16. Few tests (xUnit only for profiles; UI via UIA scripts); install / update / uninstall tested locally, but the release workflow, choco and winget publishing were never run (see release-and-distribution.md); Setup.exe is unsigned.
 17. Profiles: no manage/rename/edit dialog, no import/export. Fixed-window fallback is not persisted. Live rebind is lazy (a window is attached when it gets focus), so the selected-window count can lag until then.

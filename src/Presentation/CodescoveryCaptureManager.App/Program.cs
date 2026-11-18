@@ -11,7 +11,10 @@ namespace CodescoveryCaptureManager.App
         [STAThread]
         public static void Main()
         {
-            VelopackApp.Build().Run();
+            // Uninstall removes the app folder but not our "Start with Windows" entry: drop it here.
+            VelopackApp.Build()
+                .OnBeforeUninstallFastCallback(_ => StartupRegistration.SetEnabled(false))
+                .Run();
 
             using var instance = SingleInstance.TryAcquire();
             if (instance == null) return;
