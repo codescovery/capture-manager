@@ -1,0 +1,136 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>ccm stream rig</title>
+<body style="font:13px monospace;background:#111;color:#ddd">
+<pre id="out">starting</pre>
+<script>
+// Query: viewers (default 1), seconds (default 15), autostart=0 to wait for window.runRig().
+const params = new URLSearchParams(location.search);
+const STREAM_URL = 'ws://127.0.0.1:47800';
+const out = document.getElementById('out');
+let clockOffset = 0;
+const rigNow = () => performance.now() + clockOffset;
+
+async function syncClock() {
+  let best = { rtt: Infinity, offset: 0 };
+  for (let i = 0; i < 150; i++) {
+    const t0 = performance.now();
+    const { t } = await (await fetch('/time')).json();
+    const t1 = performance.now();
+    if (t1 - t0 < best.rtt) best = { rtt: t1 - t0, offset: t - (t0 + t1) / 2 };
+  }
+  clockOffset = best.offset;
+  return best.rtt;
+}
+
+function findSps(bytes) {
+  for (let i = 0; i + 4 < bytes.length; i++) {
+    if (bytes[i] !== 0 || bytes[i + 1] !== 0) continue;
+    const start = bytes[i + 2] === 1 ? i + 3 : (bytes[i + 2] === 0 && bytes[i + 3] === 1 ? i + 4 : -1);
+    if (start > 0 && (bytes[start] & 0x1f) === 7) return bytes.subarray(start, start + 4);
+  }
+  return null;
+}
+
+class Viewer {
+  constructor(id) {
+    this.id = id; this.frames = 0; this.bytes = 0; this.keyFrames = 0; this.received = 0; this.errors = 0;
+    this.width = 0; this.height = 0; this.state = -1; this.changes = []; this.gaps = []; this.lastDecoded = 0;
+    this.focus = null; this.codec = null; this.decoder = null; this.waitingKey = true; this.maxQueue = 0;
+    this.firstFrameAt = 0; this.connectedAt = 0;
+    this.socket = new WebSocket(STREAM_URL);
+    this.socket.binaryType = 'arraybuffer';
+    this.socket.onopen = () => { this.connectedAt = performance.now(); };
+    this.socket.onmessage = (event) => typeof event.data === 'string' ? this.focus = event.data : this.push(new Uint8Array(event.data));
+    this.socket.onclose = () => { this.closed = true; };
+  }
+  push(bytes) {
+    const received = performance.now();
+    const isKey = (bytes[1] & 1) !== 0;
+    const unit = bytes.subarray(2);
+    this.received++; this.bytes += unit.length;
+    if (isKey) {
+      this.keyFrames++;
+      const sps = findSps(unit);
+      const codec = sps ? 'avc1.' + [sps[1], sps[2], sps[3]].map(v => v.toString(16).padStart(2, '0')).join('') : this.codec;
+      if (codec !== this.codec || !this.decoder) this.configure(codec);
+      this.waitingKey = false;
+    }
+    if (this.waitingKey || !this.decoder || this.decoder.state !== 'configured') return;
+    this.maxQueue = Math.max(this.maxQueue, this.decoder.decodeQueueSize);
+    this.decoder.decode(new EncodedVideoChunk({ type: isKey ? 'key' : 'delta', timestamp: Math.round(received * 1000), data: unit }));
+  }
+  configure(codec) {
+    this.codec = codec;
+    if (this.decoder && this.decoder.state !== 'closed') this.decoder.close();
+    this.decoder = new VideoDecoder({ output: (frame) => this.onFrame(frame), error: (e) => { this.errors++; this.lastError = String(e); this.waitingKey = true; this.decoder = null; } });
+    this.decoder.configure({ codec, optimizeForLatency: true, hardwareAcceleration: 'prefer-hardware', avc: { format: 'annexb' } });
+  }
+  async onFrame(frame) {
+    const decoded = performance.now();
+    const received = frame.timestamp / 1000;
+    if (!this.firstFrameAt) this.firstFrameAt = decoded;
+    if (this.lastDecoded) this.gaps.push(decoded - this.lastDecoded);
+    this.lastDecoded = decoded;
+    this.frames++; this.width = frame.displayWidth; this.height = frame.displayHeight;
+    try {
+      const x = (frame.codedWidth >> 2) & ~1, y = (frame.codedHeight >> 2) & ~1;
+      const buffer = new Uint8Array(16);
+      await frame.copyTo(buffer, { rect: { x, y, width: 2, height: 2 } });
+      const state = buffer[0] > 128 ? 1 : 0;
+      if (state !== this.state) {
+        if (this.state !== -1) this.changes.push({ state, decoded: decoded + clockOffset, received: received + clockOffset });
+        this.state = state;
+      }
+    } catch (e) { this.errors++; this.lastError = String(e); }
+    finally { frame.close(); }
+  }
+  close() { this.socket.close(); if (this.decoder && this.decoder.state !== 'closed') this.decoder.close(); }
+}
+
+function summary(values) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const pick = (q) => +sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))].toFixed(1);
+  return { n: sorted.length, min: pick(0), p50: pick(0.5), p90: pick(0.9), p99: pick(0.99), max: +sorted[sorted.length - 1].toFixed(1) };
+}
+
+async function runRig(viewerCount, seconds) {
+  window.result = null;
+  out.textContent = 'running';
+  const clockRtt = await syncClock();
+  const startedAt = rigNow();
+  await fetch('/status');
+  const viewers = Array.from({ length: viewerCount }, (_, i) => new Viewer(i));
+  await new Promise(r => setTimeout(r, seconds * 1000));
+  const status = await (await fetch('/status')).json();
+  const toggles = await (await fetch('/toggles?since=' + startedAt)).json();
+  const report = { clockRttMs: +clockRtt.toFixed(2), seconds, rig: status, toggles: toggles.length, viewers: [] };
+  for (const viewer of viewers) {
+    const total = [], toReceive = [], toDecode = [];
+    for (const change of viewer.changes) {
+      const toggle = [...toggles].reverse().find(t => t.s === change.state && t.t <= change.decoded);
+      if (!toggle || change.decoded - toggle.t > 1000) continue;
+      total.push(change.decoded - toggle.t);
+      toReceive.push(change.received - toggle.t);
+      toDecode.push(change.decoded - change.received);
+    }
+    const active = viewer.firstFrameAt ? (viewer.lastDecoded - viewer.firstFrameAt) / 1000 : 0;
+    report.viewers.push({
+      id: viewer.id, size: viewer.width + 'x' + viewer.height, codec: viewer.codec, focus: viewer.focus,
+      framesDecoded: viewer.frames, framesReceived: viewer.received, keyFrames: viewer.keyFrames, errors: viewer.errors, lastError: viewer.lastError,
+      fps: active ? +(viewer.frames / active).toFixed(1) : 0, mbps: active ? +(viewer.bytes * 8 / active / 1e6).toFixed(2) : 0,
+      firstFrameMs: viewer.firstFrameAt ? +(viewer.firstFrameAt - viewer.connectedAt).toFixed(0) : null,
+      maxDecodeQueue: viewer.maxQueue, frameGapMs: summary(viewer.gaps),
+      latencyMs: summary(total), paintToReceivedMs: summary(toReceive), receivedToDecodedMs: summary(toDecode),
+    });
+    viewer.close();
+  }
+  window.result = report;
+  out.textContent = JSON.stringify(report, null, 1);
+  return report;
+}
+window.runRig = runRig;
+if (params.get('autostart') !== '0') runRig(+params.get('viewers') || 1, +params.get('seconds') || 15);
+</script>
+</body>

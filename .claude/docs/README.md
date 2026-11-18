@@ -11,6 +11,7 @@ Source of truth for agents. Update when code changes.
 | [web-ui.md](web-ui.md) | React web UI (`src/Web`), served by the app; focus-bridge protocol, build, limits |
 | [profiles.md](profiles.md) | Saved window profiles: rule model, storage, service, privacy |
 | [logging.md](logging.md) | File log (`AppLog`, rotation, privacy rule) and crash handlers |
+| [stream-testing.md](stream-testing.md) | Stream rig (`.claude/scripts/streamrig`): how latency / fps / viewers / encoders are measured, results, open points |
 | [e2e-testing.md](e2e-testing.md) | UI-Automation e2e script (`.claude/scripts/e2e-focus.ps1`) for focus/fallback behaviour, gotchas |
 
 ## Maintenance rule

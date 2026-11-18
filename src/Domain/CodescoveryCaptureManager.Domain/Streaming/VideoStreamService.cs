@@ -119,7 +119,7 @@ namespace CodescoveryCaptureManager.Domain.Streaming
             _encodedWidth = width;
             _encodedHeight = height;
             _converter = new Nv12Converter(device, contentWidth, contentHeight, width, height, FramesPerSecond);
-            _encoder = new H264Encoder(device, width, height, FramesPerSecond, BitrateFor(width, height));
+            _encoder = H264Encoder.Create(device, width, height, FramesPerSecond, BitrateFor(width, height));
             _encoder.FrameEncoded += OnEncoded;
             AppLog.Info($"Video stream: {width}x{height} {(_encoder.IsHardware ? "hardware" : "software")} H.264.");
         }

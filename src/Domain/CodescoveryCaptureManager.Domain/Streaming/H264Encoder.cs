@@ -1,6 +1,7 @@
 using CodescoveryCaptureManager.Domain.Diagnostics;
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using SharpDX;
 using SharpDX.Direct3D11;
@@ -45,7 +46,31 @@ namespace CodescoveryCaptureManager.Domain.Streaming
         private volatile bool _forceKeyFrame = true;
         private volatile bool _stopping;
 
-        public H264Encoder(Device device, int width, int height, int framesPerSecond, int bitrate)
+        /// <summary>Set to 1 to skip hardware encoders (diagnostics, or a GPU encoder that misbehaves).</summary>
+        public const string SoftwareEncoderVariable = "CAPTURE_MANAGER_SOFTWARE_ENCODER";
+
+        /// <summary>
+        /// Hardware encoder when one exists and accepts this size; otherwise the software encoder. A hardware encoder
+        /// can be listed and still refuse to start (no free session, unsupported resolution, driver problem).
+        /// </summary>
+        public static H264Encoder Create(Device device, int width, int height, int framesPerSecond, int bitrate)
+        {
+            if (Environment.GetEnvironmentVariable(SoftwareEncoderVariable) != "1")
+            {
+                try
+                {
+                    return new H264Encoder(device, width, height, framesPerSecond, bitrate, hardware: true);
+                }
+                catch (Exception ex) when (ex is SharpDXException || ex is InvalidOperationException)
+                {
+                    AppLog.Warning($"Hardware H.264 encoder not usable for {width}x{height}, using the software encoder. {ex.Message}");
+                }
+            }
+
+            return new H264Encoder(device, width, height, framesPerSecond, bitrate, hardware: false);
+        }
+
+        private H264Encoder(Device device, int width, int height, int framesPerSecond, int bitrate, bool hardware)
         {
             EnsureMediaFoundation();
             _device = device;
@@ -53,16 +78,24 @@ namespace CodescoveryCaptureManager.Domain.Streaming
             _height = height;
             _framesPerSecond = framesPerSecond;
             _bitrate = bitrate;
+            IsHardware = hardware;
+            _isAsync = hardware;
+            _transform = CreateTransform(hardware);
+            try
+            {
+                _codec = MediaFoundationNative.QueryCodecApi(_transform);
+                if (IsHardware) _deviceManager = AttachDeviceManager();
+                Configure();
+                _providesSamples = ReadOutputProvidesSamples(out _outputBufferSize);
 
-            (_transform, IsHardware) = CreateTransform();
-            _isAsync = IsHardware;
-            _codec = MediaFoundationNative.QueryCodecApi(_transform);
-            if (IsHardware) _deviceManager = AttachDeviceManager();
-            Configure();
-            _providesSamples = ReadOutputProvidesSamples(out _outputBufferSize);
-
-            _transform.ProcessMessage(TMessageType.NotifyBeginStreaming, IntPtr.Zero);
-            _transform.ProcessMessage(TMessageType.NotifyStartOfStream, IntPtr.Zero);
+                _transform.ProcessMessage(TMessageType.NotifyBeginStreaming, IntPtr.Zero);
+                _transform.ProcessMessage(TMessageType.NotifyStartOfStream, IntPtr.Zero);
+            }
+            catch
+            {
+                ReleaseTransform();
+                throw;
+            }
 
             _thread = new Thread(IsHardware ? RunAsync : RunSync) { IsBackground = true, Name = "H264Encoder" };
             _thread.Start();
@@ -107,14 +140,21 @@ namespace CodescoveryCaptureManager.Domain.Streaming
             }
         }
 
-        private (Transform, bool) CreateTransform()
+        private static Transform CreateTransform(bool hardware)
         {
-            var hardware = MediaFoundationNative.EnumerateH264Encoders(true);
-            if (hardware.Length > 0) return (hardware[0], true);
+            var encoders = MediaFoundationNative.EnumerateH264Encoders(hardware);
+            if (encoders.Length == 0)
+                throw new InvalidOperationException(hardware ? "No hardware H.264 encoder available." : "No H.264 encoder available.");
 
-            var software = MediaFoundationNative.EnumerateH264Encoders(false);
-            if (software.Length == 0) throw new InvalidOperationException("No H.264 encoder available.");
-            return (software[0], false);
+            foreach (var unused in encoders.Skip(1)) unused.Dispose();
+            return encoders[0];
+        }
+
+        private void ReleaseTransform()
+        {
+            _transform.Dispose();
+            MediaFoundationNative.ReleaseCodecApi(_codec);
+            _deviceManager?.Dispose();
         }
 
         private DXGIDeviceManager AttachDeviceManager()
@@ -126,14 +166,16 @@ namespace CodescoveryCaptureManager.Domain.Streaming
             return manager;
         }
 
+        // Codec settings go in before the media types: the software encoder only honours low latency when it is
+        // set first (set afterwards it kept buffering about 18 frames, 220 ms at 82 fps).
         private void Configure()
         {
-            SetOutputType();
-            SetInputType();
             MediaFoundationNative.TrySet(_codec, MediaFoundationNative.LowLatency, true);
             MediaFoundationNative.TrySet(_codec, MediaFoundationNative.BPictureCount, 0u);
             MediaFoundationNative.TrySet(_codec, MediaFoundationNative.RateControlMode, 4u);
             MediaFoundationNative.TrySet(_codec, MediaFoundationNative.MeanBitRate, (uint)_bitrate);
+            SetOutputType();
+            SetInputType();
         }
 
         private void SetOutputType()
@@ -196,7 +238,8 @@ namespace CodescoveryCaptureManager.Domain.Streaming
             }
             catch (SharpDXException ex)
             {
-                AppLog.Error("Encoder event failed.", ex);
+                // Dispose shuts the transform down to unblock this wait: expected, not a failure.
+                if (!_stopping) AppLog.Error("Encoder event failed.", ex);
                 return null;
             }
         }
@@ -397,9 +440,7 @@ namespace CodescoveryCaptureManager.Domain.Streaming
             MediaFoundationNative.Shutdown(_transform);
             _frameReady.Set();
             _thread.Join(2000);
-            _transform.Dispose();
-            MediaFoundationNative.ReleaseCodecApi(_codec);
-            _deviceManager?.Dispose();
+            ReleaseTransform();
             _staging?.Dispose();
             _frameReady.Dispose();
         }

@@ -22,7 +22,8 @@ CaptureService.ProcessFrame ──IFrameTap.OnFrame(texture, w, h)──▶ Vide
    ──EncodedFrame(Annex-B, isKey)──▶ FocusBridgeService ──binary WebSocket──▶ browser
 ```
 - **Zero work without viewers**: `VideoStreamService` does nothing until `FocusBridgeService` reports >= 1 client (`SetViewerCount`); pipeline is created lazily on the first frame, rebuilt on content size change, torn down when capture stops (`CaptureService.Dispose -> OnCaptureStopped`) or the last viewer leaves.
-- Frames are rate-limited to 120 fps (capture rate = window/display rate). `Submit` keeps only the latest frame (latest wins) so the encoder never lags behind.
+- Capture rate = display rate on Windows 11 24H2+ (`CaptureSessionPacing` sets `MinUpdateInterval`; older Windows: the default pacing, measured at a third of a 164 Hz display). Frames are then rate-limited to 120 fps by dropping the ones that come too soon, which on a 164 Hz display means every second frame (82 fps). `Submit` keeps only the latest frame (latest wins) so the encoder never lags behind.
+- Encoder choice (`H264Encoder.Create`): hardware first; if it is missing or fails to start, the Microsoft software encoder. Env var `CAPTURE_MANAGER_SOFTWARE_ENCODER=1` forces software. Codec options are set before the media types (the software encoder ignores low latency otherwise).
 - Per-client backpressure (`ClientConnection.TrySendVideo`): if a client's previous send is still pending the frame is dropped for that client, delta frames are skipped until the next key frame and a key frame is requested. Text messages are queued in order on the same per-client lock.
 - Binary frame layout: `[0]=1 (video)`, `[1]` bit0 = key frame, `[2..]` H.264 Annex-B access unit (SPS/PPS + IDR in key frames, AUD present).
 - Raw-vtable calls (`MediaFoundationNative`): `IMFTransform::ProcessOutput` (SharpDX does not copy the MFT-provided sample back) and `ICodecAPI::SetValue` (RCW marshaling fails from the encoder thread: E_NOINTERFACE). Vtable indices: ProcessOutput 25, ICodecAPI.SetValue 9. `MFShutdownObject` (`mf.dll`) unblocks the event loop on dispose.
@@ -54,7 +55,8 @@ npm test        # vitest: lib/focus.ts, lib/annexb.ts
 
 ## Verified / not verified
 Verified on this machine (hardware H.264 encoder found): app serves the page; stream reaches a Node client and a browser tab; browser decodes and draws (`1266x712 · 55 fps · 1.6 Mbps`, animation visible); blur -> page blanks; key frame roughly every second from the hardware encoder; 25 C# + 8 vitest tests. Frame cadence equals the source's (animated WinForms window, ~55 fps).
-Not verified: end-to-end latency in milliseconds (no pixel-timestamp harness), 4K / 120 Hz sources, the software-encoder fallback (no machine without a hardware encoder), multiple simultaneous viewers, `B-frame count` setting is rejected by this encoder (0x80070057, harmless).
+Measured 2026-11-18 with the stream rig (details and limits in stream-testing.md): paint -> decoded latency p50 12 ms at 720p, 14 to 16 ms at 1080p, 19 ms for a 4K window (hardware), 18 ms with the software encoder at 720p; 82 to 84 fps on a 164 Hz display; three simultaneous viewers each got every frame with no decode error; streaming works with the app hidden in the tray.
+Not verified: real content (the rig's picture is trivial), sources above 4096 px, a machine without a hardware encoder, Windows before 24H2, stand-alone Chrome/Edge latency. `B-frame count` is rejected by the hardware encoder and the low-delay rate control mode by the software one (0x80070057, harmless, logged as warnings).
 
 ## Limits
 - Chrome/Edge desktop (WebCodecs); H.264 only.

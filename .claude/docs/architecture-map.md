@@ -47,7 +47,7 @@ Domain/Services
    ├─ WindowsProcessServices (internal, IWindowsProcessServices): EnumWindows → visible + titled + not ignored process
    ├─ CapturableWindowsMonitoringService (internal, ICapturableWindowsMonitoringService): Dictionary<HWND,CapturableWindow>, foreground WinEvent hook (`ForegroundWindowWatcher`) + 1 s safety check; raises `ForegroundWindowChanging` so `ProfileService` can rebind (see decisions 2026-11-18)
    ├─ WindowCaptureService (public): Composition visual tree (root → sprite w/ surface brush + drop shadow), owns D3D device, current CaptureService
-   ├─ CaptureService (internal): GraphicsCaptureItem + Direct3D11CaptureFramePool + SharpDX SwapChain1; copies frame → back buffer → Present; resizes on content size change
+   ├─ CaptureService (internal): GraphicsCaptureItem + free-threaded Direct3D11CaptureFramePool (frames handled on a capture thread under `_sync`, not the UI thread) + `CaptureSessionPacing` (display-rate capture on 24H2+) + SharpDX SwapChain1; copies frame → back buffer → Present; resizes on content size change
    └─ ProfileService (internal, IProfileService, singleton) + JsonProfileStore (IProfileStore): saved window sets as rules; see profiles.md
 
 Domain/Profiles: WindowRule, CaptureProfile, AppSettings, WindowRuleMatcher (pure), WindowRuleFactory, WindowTitles

@@ -19,6 +19,10 @@ namespace CodescoveryCaptureManager.Domain.Services
         private readonly object _sync = new object();
         private bool _disposed;
 
+        // Smallest interval Windows accepts reliably; frames then arrive at the display refresh rate.
+        private static readonly TimeSpan MinUpdateInterval = TimeSpan.FromMilliseconds(1);
+        private static bool _pacingLogged;
+
         private readonly IDirect3DDevice _device;
         private readonly SharpDX.Direct3D11.Device _d3dDevice;
         private readonly SharpDX.DXGI.SwapChain1 _swapChain;
@@ -52,15 +56,29 @@ namespace CodescoveryCaptureManager.Domain.Services
             };
             _swapChain = new SharpDX.DXGI.SwapChain1(factory, _d3dDevice, ref description);
 
-            _framePool = Direct3D11CaptureFramePool.Create(
+            // Free threaded: frames are handled on a capture thread, so a busy UI thread cannot stall the picture
+            // (with the UI-thread pool, gaps of about 0.5 s were measured). Everything here is guarded by _sync.
+            _framePool = Direct3D11CaptureFramePool.CreateFreeThreaded(
                 _device,
                 DirectXPixelFormat.B8G8R8A8UIntNormalized,
                 2,
                 graphicsCaptureItem.Size);
             _session = _framePool.CreateCaptureSession(graphicsCaptureItem);
+            ApplyPacing();
             _lastSize = graphicsCaptureItem.Size;
 
             _framePool.FrameArrived += OnFrameArrived;
+        }
+
+        private void ApplyPacing()
+        {
+            var paced = CaptureSessionPacing.TrySetMinUpdateInterval(_session, MinUpdateInterval);
+            if (_pacingLogged) return;
+
+            _pacingLogged = true;
+            AppLog.Info(paced
+                ? "Capture paced at the display rate."
+                : "Capture uses the default Windows pacing (the display rate needs Windows 11 24H2).");
         }
 
         public void Dispose()
