@@ -31,14 +31,14 @@ Debug start project: `Presentation/CodescoveryCaptureManager.App`.
 
 Two projects: `Presentation/…App` (WPF, MaterialDesign UI, DI composition root `Startup.cs`) and `Domain/…Domain` (window enumeration, focus monitoring, WinRT capture + SharpDX/Composition rendering, P/Invoke). Despite the name, Domain holds infrastructure/interop too and references WPF.
 
-Core flow: `SelectCapturableWindows` picker -> `ICapturableWindowsMonitoringService` (HWND dictionary + 10 ms foreground poll) -> `MonitoredWindowFocused` event -> `CapturedWindows` creates `GraphicsCaptureItem` -> `WindowCaptureService`/`CaptureService` copy frames to a swap chain shown through a Windows.UI.Composition visual bound to the WPF window HWND.
+Core flow: `SelectCapturableWindows` picker -> `ICapturableWindowsMonitoringService` (HWND dictionary + foreground WinEvent hook `ForegroundWindowWatcher`, 1 s safety check) -> `MonitoredWindowFocused` event -> `CapturedWindows` creates `GraphicsCaptureItem` -> `WindowCaptureService`/`CaptureService` copy frames to a swap chain shown through a Windows.UI.Composition visual bound to the WPF window HWND.
 
 Non-obvious things:
 - `App` creates a `DispatcherQueueController` (CoreMessaging.dll) on the UI thread; Composition needs it. Don't remove.
 - `Startup.ServiceProvider` is cached (one provider); Scoped services are effectively singletons from the root. `IProfileService`, `IFocusBridge` are singletons.
 - `CapturableWindowsMonitoringService` and `WindowsProcessServices` are `internal`; only reachable via DI interfaces. `WindowCaptureService` is public and `new`ed by the UI, not injected.
 - The web page is a viewer: `Domain/Streaming` hardware-encodes the shown window (H.264) and `FocusBridgeService` streams it (docs/web-ui.md). Media Foundation calls that SharpDX cannot do go through raw vtables in `MediaFoundationNative`; keep them off RCW marshaling (apartment problems).
-- Windows identified purely by HWND; no handling of closed/recreated windows yet (see known-issues).
+- Windows are bound by HWND. With an active profile, `ProfileService.FollowActiveProfile` rebinds on focus (restarted apps come back, windows whose title stops matching are released); hand-picked windows are not rebound (see known-issues).
 
 ## Doc index
 

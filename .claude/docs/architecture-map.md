@@ -45,7 +45,7 @@ Domain/Services
    ├─ FocusBridgeService (internal, IFocusBridge): loopback WebSocket server serves the React web UI (embedded `web/*` resources), publishes the focused picked window / blur (text) and the H.264 video of the shown window (binary) to browser pages (see web-ui.md)
    ├─ VideoStreamService (internal, IVideoStream/IFrameTap, Domain/Streaming): receives each captured frame from `CaptureService`, converts on the GPU (Nv12Converter), hardware-encodes H.264 (H264Encoder, Media Foundation) and raises `FrameEncoded` for the bridge; idle without viewers (see web-ui.md)
    ├─ WindowsProcessServices (internal, IWindowsProcessServices): EnumWindows → visible + titled + not ignored process
-   ├─ CapturableWindowsMonitoringService (internal, ICapturableWindowsMonitoringService): Dictionary<HWND,CapturableWindow>, poll loop
+   ├─ CapturableWindowsMonitoringService (internal, ICapturableWindowsMonitoringService): Dictionary<HWND,CapturableWindow>, foreground WinEvent hook (`ForegroundWindowWatcher`) + 1 s safety check; raises `ForegroundWindowChanging` so `ProfileService` can rebind (see decisions 2026-11-18)
    ├─ WindowCaptureService (public): Composition visual tree (root → sprite w/ surface brush + drop shadow), owns D3D device, current CaptureService
    ├─ CaptureService (internal): GraphicsCaptureItem + Direct3D11CaptureFramePool + SharpDX SwapChain1; copies frame → back buffer → Present; resizes on content size change
    └─ ProfileService (internal, IProfileService, singleton) + JsonProfileStore (IProfileStore): saved window sets as rules; see profiles.md
@@ -62,7 +62,7 @@ UI for profiles: toolbar **Profiles** button (ContextMenu rebuilt on open: profi
 
 **Pick windows**: menu → `OpenCapturePicker` → picker enumerates windows (ignores `applicationframehost, shellexperiencehost, systemsettings, winstore.app, searchui, explorer`, hidden, untitled, self) → click card toggles `IsSelected` → Apply: diff selection vs monitored set (add/remove), then StopCapture + SyncWithForegroundWindow once.
 
-**Focus-follow loop** (`StartMonitoring`): every `CapturableWindowDefaultValues.RefreshRate` (10 ms) `Task.Delay` → `NativeMethods.GetActiveWindow()` (wraps `GetForegroundWindow`) → if foreground HWND is monitored → raise `MonitoredWindowFocused`. Each tick first prunes HWNDs failing `IsWindow` (raises `MonitoredWindowClosed`; UI stops capture if it was showing that window) and is wrapped in try/catch. UI handler skips if already capturing that HWND, else starts new capture (stops previous). If foreground is a window of **another process** that is not monitored, the service raises `MonitoredWindowsBlurred` once and the UI calls `StopCapture` → the view goes blank (nothing leaks). Foreground in **this app** (picker, capture window, toolbar) is neutral: last view stays. `SyncWithForegroundWindow` (after Apply) raises focus only if a monitored window is the real foreground window; otherwise nothing is shown (never show an unfocused window).
+**Focus follow** (`StartMonitoring`): installs `ForegroundWindowWatcher` (`SetWinEventHook` EVENT_SYSTEM_FOREGROUND + MINIMIZEEND, callbacks on the UI thread) and loops a safety check every `CapturableWindowDefaultValues.SafetyCheckInterval` (1 s). Both call `CheckForegroundWindow`: `PruneClosedWindows` (-> `MonitoredWindowClosed`), then `EvaluateForeground(GetForegroundWindow())`: foreign window -> `ForegroundWindowChanging` (profile rebind: attach/release); monitored -> `MonitoredWindowFocused` (raised on every check, subscribers dedupe by HWND); foreign and not monitored -> `MonitoredWindowsBlurred` once; own-app window -> nothing (neutral).
 
 **Capture**: `CaptureHelper.CreateItemForWindow(hwnd)` (IGraphicsCaptureItemInterop) → `CaptureService` creates SharpDX device from WinRT IDirect3DDevice (`Direct3D11Helper`), SwapChain1 (B8G8R8A8, flip-sequential, 2 buffers, premultiplied), frame pool (2 buffers); `FrameArrived` copies frame texture to back buffer and `Present(0)`; on size change resizes buffers and recreates pool. Surface exposed via `Compositor.CreateCompositionSurfaceForSwapChain` → `CompositionSurfaceBrush`.
 
@@ -71,7 +71,7 @@ UI for profiles: toolbar **Profiles** button (ContextMenu rebuilt on open: profi
 **Shutdown**: window Closing → StopCapturing + Dispose (disposes monitoring & process services).
 
 ## 5. Threading / platform
-- Everything effectively on UI thread: poll loop `await Task.Delay` continues on WPF sync context; event handlers touch Composition from UI thread. `FrameArrived` runs on frame-pool thread (default pool created on UI thread w/ dispatcher queue → UI thread).
+- Everything effectively on UI thread: WinEvent callbacks and the safety loop (`await Task.Delay`) both run on the WPF UI thread; event handlers touch Composition from UI thread. `FrameArrived` runs on frame-pool thread (default pool created on UI thread w/ dispatcher queue → UI thread).
 - Requires Windows 10 1903+ (Graphics Capture), CoreMessaging.dll, Composition desktop interop.
 - App manifest: `asInvoker` — cannot capture elevated windows when not elevated.
 

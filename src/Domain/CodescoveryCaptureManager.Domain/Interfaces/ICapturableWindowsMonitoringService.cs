@@ -11,6 +11,8 @@ namespace CodescoveryCaptureManager.Domain.Interfaces
         void StopMonitoring();
         void AddMonitoringWindow(CapturableWindow capturableWindow);
         void RemoveMonitoringWindow(IntPtr processInteropHandle);
+        /// <summary>Stops monitoring a window and raises <see cref="MonitoredWindowClosed"/> so it stops being shown.</summary>
+        void ReleaseMonitoringWindow(IntPtr processInteropHandle);
         bool IsMonitored(IntPtr processInteropHandle);
         bool HasMonitoredWindows();
         System.Collections.Generic.IReadOnlyList<CapturableWindow> GetMonitoredWindows();
@@ -26,6 +28,12 @@ namespace CodescoveryCaptureManager.Domain.Interfaces
         delegate void MonitoredWindowsBlur();
         /// <summary>Raised once when focus moves to a window outside the app that is not monitored.</summary>
         event MonitoredWindowsBlur MonitoredWindowsBlurred;
+
+        /// <summary>
+        /// Raised with a window of another app that is (or just became) the foreground window, before deciding whether
+        /// it is monitored. Handlers may add or release monitored windows.
+        /// </summary>
+        event Action<IntPtr> ForegroundWindowChanging;
 
         delegate void MonitoredWindowClosure(CapturableWindow closedCapturableWindow);
         event MonitoredWindowClosure MonitoredWindowClosed;

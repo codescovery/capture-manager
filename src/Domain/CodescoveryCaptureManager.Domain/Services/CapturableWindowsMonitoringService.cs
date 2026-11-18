@@ -17,42 +17,75 @@ namespace CodescoveryCaptureManager.Domain.Services
         private bool _isBlurred;
 
         public delegate void MonitoredWindowFocus(IntPtr activeCapturableWindowInteropHandle);
-        
+
         public CapturableWindowsMonitoringService(IDictionary<IntPtr, CapturableWindow> capturableWindows=null)
         {
             _capturableWindows = capturableWindows?? new Dictionary<IntPtr, CapturableWindow>();
             _cancellationTokenSource = new CancellationTokenSource();
         }
 
+        // Focus changes arrive through the WinEvent hook; the slow loop only catches what the hook cannot see
+        // (a window closed in the background, a title that changed, a missed event).
         public async Task<bool> StartMonitoring()
         {
             if (_cancellationTokenSource.IsCancellationRequested)
                 _cancellationTokenSource = new CancellationTokenSource();
 
             var token = _cancellationTokenSource.Token;
+            using var watcher = new ForegroundWindowWatcher(CheckForegroundWindow);
+            if (!watcher.IsActive)
+                Console.WriteLine("Foreground hook not installed; focus is checked once per interval only.");
+
             SyncWithForegroundWindow();
             while (!token.IsCancellationRequested)
             {
-                await Task.Delay(CapturableWindowDefaultValues.RefreshRate);
-                try
-                {
-                    PruneClosedWindows();
-                    var activeCapturableWindowInteropHandle = NativeMethods.GetActiveWindow();
-                    if (!IsMonitored(activeCapturableWindowInteropHandle))
-                    {
-                        RaiseBlurredOnce(activeCapturableWindowInteropHandle);
-                        continue;
-                    }
-                    _isBlurred = false;
-                    MonitoredWindowFocused?.Invoke(_capturableWindows[activeCapturableWindowInteropHandle]);
-                }
-                catch (Exception ex)
-                {
-                    // A failure in one tick (or in a subscriber) must not kill monitoring.
-                    Console.WriteLine($"Monitoring tick failed. {ex.Message}");
-                }
+                await WaitForNextCheck(token);
+                CheckForegroundWindow();
             }
             return token.IsCancellationRequested;
+        }
+
+        private static async Task WaitForNextCheck(CancellationToken token)
+        {
+            try
+            {
+                await Task.Delay(CapturableWindowDefaultValues.SafetyCheckInterval, token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Stopping: the caller's loop condition ends monitoring.
+            }
+        }
+
+        private void CheckForegroundWindow()
+        {
+            if (_cancellationTokenSource.IsCancellationRequested) return;
+
+            try
+            {
+                PruneClosedWindows();
+                EvaluateForeground(NativeMethods.GetActiveWindow());
+            }
+            catch (Exception ex)
+            {
+                // A failure in one check (or in a subscriber) must not kill monitoring.
+                Console.WriteLine($"Foreground check failed. {ex.Message}");
+            }
+        }
+
+        /// <summary>Decides what the given foreground window means: a monitored window got focus, or focus left them.</summary>
+        internal void EvaluateForeground(IntPtr foregroundHandle)
+        {
+            if (IsForeignWindow(foregroundHandle))
+                ForegroundWindowChanging?.Invoke(foregroundHandle);
+
+            if (!IsMonitored(foregroundHandle))
+            {
+                RaiseBlurredOnce(foregroundHandle);
+                return;
+            }
+            _isBlurred = false;
+            MonitoredWindowFocused?.Invoke(_capturableWindows[foregroundHandle]);
         }
 
         private void PruneClosedWindows()
@@ -62,16 +95,22 @@ namespace CodescoveryCaptureManager.Domain.Services
                 .Where(w => !NativeMethods.IsWindow(w.Handle))
                 .ToList();
             foreach (var closedWindow in closedWindows)
+                ReleaseMonitoringWindow(closedWindow.Handle);
+        }
+
+        public void ReleaseMonitoringWindow(IntPtr processInteropHandle)
+        {
+            if (!IsMonitored(processInteropHandle)) return;
+
+            var releasedWindow = _capturableWindows[processInteropHandle];
+            _capturableWindows.Remove(processInteropHandle);
+            try
             {
-                _capturableWindows.Remove(closedWindow.Handle);
-                try
-                {
-                    MonitoredWindowClosed?.Invoke(closedWindow);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Closed window handler failed for {closedWindow.Name}. {ex.Message}");
-                }
+                MonitoredWindowClosed?.Invoke(releasedWindow);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Closed window handler failed for {releasedWindow.Name}. {ex.Message}");
             }
         }
 
@@ -138,6 +177,7 @@ namespace CodescoveryCaptureManager.Domain.Services
         public event ICapturableWindowsMonitoringService.MonitoredWindowFocus MonitoredWindowFocused;
         public event ICapturableWindowsMonitoringService.MonitoredWindowClosure MonitoredWindowClosed;
         public event ICapturableWindowsMonitoringService.MonitoredWindowsBlur MonitoredWindowsBlurred;
+        public event Action<IntPtr> ForegroundWindowChanging;
 
         public void Dispose()
         {
@@ -145,6 +185,7 @@ namespace CodescoveryCaptureManager.Domain.Services
             MonitoredWindowFocused = null;
             MonitoredWindowClosed = null;
             MonitoredWindowsBlurred = null;
+            ForegroundWindowChanging = null;
             _cancellationTokenSource?.Cancel();
             _cancellationTokenSource?.Dispose();
         }

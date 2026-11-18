@@ -24,6 +24,7 @@ namespace CodescoveryCaptureManager.Domain.Services
             _profiles = _store.LoadProfiles().ToList();
             _settings = _store.LoadSettings();
             Active = _profiles.FirstOrDefault(profile => profile.Id == _settings.LastProfileId);
+            _monitoringService.ForegroundWindowChanging += FollowActiveProfile;
         }
 
         public IReadOnlyList<CaptureProfile> Profiles => _profiles.ToList();
@@ -86,6 +87,27 @@ namespace CodescoveryCaptureManager.Domain.Services
             ArgumentNullException.ThrowIfNull(change);
             _settings = change(_settings);
             _store.SaveSettings(_settings);
+        }
+
+        // Live rebind: the window that just got focus is attached if the active profile's rules want it
+        // (app restarted, opened later) and released if its title no longer matches any rule.
+        private void FollowActiveProfile(IntPtr foregroundHandle)
+        {
+            if (Active == null) return;
+
+            var boundWindows = _monitoringService.GetMonitoredWindows();
+            var isBound = _monitoringService.IsMonitored(foregroundHandle);
+            if (!_windowsProcessServices.TryDescribeWindow(foregroundHandle, out var window))
+                return;
+            if (IsOwnWindow(window)) return;
+
+            var change = ProfileBinding.Decide(Active.Rules, window, boundWindows);
+            if (change == BindingChange.Attach)
+                _monitoringService.AddMonitoringWindow(window);
+            if (change == BindingChange.Detach && isBound)
+                _monitoringService.ReleaseMonitoringWindow(foregroundHandle);
+            if (change != BindingChange.None)
+                Changed?.Invoke();
         }
 
         // The app's own windows are never profile material.

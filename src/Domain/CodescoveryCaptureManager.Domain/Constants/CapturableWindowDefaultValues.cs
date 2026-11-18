@@ -2,6 +2,7 @@
 {
     public class CapturableWindowDefaultValues
     {
-        public const int RefreshRate = 10;
+        /// <summary>Milliseconds between the checks that back up the foreground hook (closed windows, changed titles).</summary>
+        public const int SafetyCheckInterval = 1000;
     }
 }

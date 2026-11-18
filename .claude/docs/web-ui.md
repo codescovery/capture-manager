@@ -59,4 +59,3 @@ Not verified: end-to-end latency in milliseconds (no pixel-timestamp harness), 4
 ## Limits
 - Chrome/Edge desktop (WebCodecs); H.264 only.
 - Profiles are desktop-only.
-- Still polling: focus detection is the desktop 10 ms poll (`SetWinEventHook` = known-issues #11).

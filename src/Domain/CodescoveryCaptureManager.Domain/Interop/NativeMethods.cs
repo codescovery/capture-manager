@@ -69,6 +69,15 @@ namespace CodescoveryCaptureManager.Domain.Interop
         private static extern IntPtr GetForegroundWindow();
         public static IntPtr GetActiveWindow() => GetForegroundWindow();
 
+        public delegate void WinEventProc(IntPtr hook, uint eventId, IntPtr windowHandle, int objectId, int childId, uint threadId, uint time);
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr SetWinEventHook(uint eventMin, uint eventMax, IntPtr module, WinEventProc callback, uint processId, uint threadId, uint flags);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool UnhookWinEvent(IntPtr hook);
+
         [DllImport("CoreMessaging.dll", EntryPoint = "CreateDispatcherQueueController", SetLastError = true, CharSet = CharSet.Unicode, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
         public static extern uint CreateDispatcherQueueController(DispatcherQueueOptions options, out IntPtr dispatcherQueueController);
 

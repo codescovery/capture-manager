@@ -25,6 +25,11 @@ namespace CodescoveryCaptureManager.Domain.Tests.Profiles
         {
             public List<CapturableWindow> Opened { get; } = new();
             public IReadOnlyList<CapturableWindow> GetOpenedWindows(params System.Windows.Window[] ignoredWindows) => Opened.ToList();
+            public bool TryDescribeWindow(IntPtr windowHandle, out CapturableWindow window)
+            {
+                window = Opened.FirstOrDefault(opened => opened.Handle == windowHandle);
+                return window.Handle != IntPtr.Zero;
+            }
             public void Dispose() { }
         }
 
@@ -56,6 +61,57 @@ namespace CodescoveryCaptureManager.Domain.Tests.Profiles
             Assert.Equal(1, result.BoundWindows);
             Assert.Single(result.WaitingRules);
             Assert.Equal(new[] { new IntPtr(1) }, monitoring.GetMonitoredWindows().Select(w => w.Handle));
+        }
+
+        [Fact]
+        public void FocusingRestartedWindow_RebindsItToTheActiveProfile()
+        {
+            var (service, windows, monitoring, _) = Create();
+            var profile = service.Save(CaptureProfile.Create("p", new[] { new WindowRule("notepad", TitleMatchMode.Contains, "notes", false) }), false);
+            windows.Opened.Add(Window(1, "notepad", "notes.txt"));
+            service.Apply(profile.Id);
+            windows.Opened.Clear();
+            monitoring.ReleaseMonitoringWindow(new IntPtr(1));
+            windows.Opened.Add(Window(7, "notepad", "notes.txt"));
+            CapturableWindow? focused = null;
+            monitoring.MonitoredWindowFocused += window => focused = window;
+
+            monitoring.EvaluateForeground(new IntPtr(7));
+
+            Assert.True(monitoring.IsMonitored(new IntPtr(7)));
+            Assert.Equal(new IntPtr(7), focused?.Handle);
+        }
+
+        [Fact]
+        public void FocusingWindow_WithoutActiveProfile_AttachesNothing()
+        {
+            var (service, windows, monitoring, _) = Create();
+            service.Save(CaptureProfile.Create("p", new[] { new WindowRule("notepad", TitleMatchMode.Any, string.Empty, true) }), makeActive: false);
+            windows.Opened.Add(Window(7, "notepad", "notes.txt"));
+
+            monitoring.EvaluateForeground(new IntPtr(7));
+
+            Assert.False(monitoring.HasMonitoredWindows());
+        }
+
+        [Fact]
+        public void FocusingBoundWindow_WhoseTitleNoLongerMatches_ReleasesIt()
+        {
+            var (service, windows, monitoring, _) = Create();
+            var profile = service.Save(CaptureProfile.Create("p", new[] { new WindowRule("chrome", TitleMatchMode.Contains, "Docs", true) }), false);
+            windows.Opened.Add(Window(3, "chrome", "Docs - Chrome"));
+            service.Apply(profile.Id);
+            windows.Opened[0] = Window(3, "chrome", "Bank - Chrome");
+            var released = false;
+            var blurred = false;
+            monitoring.MonitoredWindowClosed += _ => released = true;
+            monitoring.MonitoredWindowsBlurred += () => blurred = true;
+
+            monitoring.EvaluateForeground(new IntPtr(3));
+
+            Assert.False(monitoring.IsMonitored(new IntPtr(3)));
+            Assert.True(released);
+            Assert.True(blurred);
         }
 
         [Fact]

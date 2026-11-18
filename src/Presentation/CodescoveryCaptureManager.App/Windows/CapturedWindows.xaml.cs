@@ -68,7 +68,7 @@ namespace CodescoveryCaptureManager.App.Windows
             _fallbackMode = Enum.TryParse<FocusFallbackMode>(_profileService.Settings.FallbackMode, out var savedMode) && savedMode != FocusFallbackMode.FixedWindow
                 ? savedMode
                 : FocusFallbackMode.Message;
-            _profileService.Changed += UpdateProfileLabel;
+            _profileService.Changed += OnProfilesChanged;
             _focusBridge.Start();
             _compositor = new Compositor();
             _containerVisual = InitializeContainerVisual();
@@ -184,13 +184,22 @@ namespace CodescoveryCaptureManager.App.Windows
             var hasMonitoredWindows = _capturableWindowsMonitoringService.HasMonitoredWindows();
             var isShowingWindow = _windowCaptureService?.IsCapturing() ?? false;
 
-            EmptyState.Visibility = hasMonitoredWindows ? Visibility.Collapsed : Visibility.Visible;
-            NoFocusState.Visibility = hasMonitoredWindows && !isShowingWindow ? Visibility.Visible : Visibility.Collapsed;
-            ShowStatus(hasMonitoredWindows, isShowingWindow);
+            // An active profile with no open window yet is set up: it is waiting, not empty.
+            var isWaitingForProfile = !hasMonitoredWindows && _profileService.Active != null;
+            var isSetUp = hasMonitoredWindows || isWaitingForProfile;
+
+            EmptyState.Visibility = isSetUp ? Visibility.Collapsed : Visibility.Visible;
+            NoFocusState.Visibility = isSetUp && !isShowingWindow ? Visibility.Visible : Visibility.Collapsed;
+            ShowStatus(hasMonitoredWindows, isShowingWindow, isWaitingForProfile);
         }
 
-        private void ShowStatus(bool hasMonitoredWindows, bool isShowingWindow)
+        private void ShowStatus(bool hasMonitoredWindows, bool isShowingWindow, bool isWaitingForProfile)
         {
+            if (isWaitingForProfile)
+            {
+                SetStatus("WarningBrush", "Waiting", $"Profile {_profileService.Active.Name}  \u00B7  its windows appear here when you open and focus them");
+                return;
+            }
             if (!hasMonitoredWindows)
             {
                 SetStatus("FaintBrush", "Not set up", "Choose windows to get started.");
@@ -352,6 +361,12 @@ namespace CodescoveryCaptureManager.App.Windows
             var answer = MessageBox.Show(this, $"Delete profile \"{profile.Name}\"?", "Delete profile", MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (answer == MessageBoxResult.Yes)
                 _profileService.Delete(profile.Id);
+        }
+
+        private void OnProfilesChanged()
+        {
+            UpdateProfileLabel();
+            if (IsLoaded) RefreshView();
         }
 
         private void UpdateProfileLabel()

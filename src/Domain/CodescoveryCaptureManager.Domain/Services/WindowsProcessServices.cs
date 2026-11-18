@@ -18,38 +18,42 @@ namespace CodescoveryCaptureManager.Domain.Services
         {
         }
         private IReadOnlyList<string> IgnoredProcess()
-            => new List<string> { "applicationframehost", "shellexperiencehost", "systemsettings", "winstore.app", "searchui", "explorer" }; 
+            => new List<string> { "applicationframehost", "shellexperiencehost", "systemsettings", "winstore.app", "searchui", "explorer" };
         public IReadOnlyList<CapturableWindow> GetOpenedWindows(params System.Windows.Window[] ignoredWindows)
         {
             var capturableWindows = CreateNewListOfCapturableWindows();
             NativeMethods.EnumWindows((processHandle, lParam) =>
             {
-                if (!IsWindowVisible(processHandle))
-                    return true;
-
-                var title = CreateNewTitleStringBuilder();
-                
-                GetWindowText(processHandle, title);
-                if (IgnoreItemBecauseTitleIsNull(title))
-                    return true;
-
                 if (IsProcessInIgnoredList(ignoredWindows, processHandle)) return true;
-
-                try
-                {
-                    var processId = GetWindowThreadProcessId(processHandle);
-                    if (IgnoreProcessByName(processId, out var process)) return true;
-                    AddProcessToCapturableWindowsList(capturableWindows, processHandle, title, process);
-                }
-                catch (Exception ex)
-                {
-                    // Process exited or is inaccessible: skip this window, keep enumerating.
-                    Console.WriteLine($"Skipping window {processHandle}. {ex.Message}");
-                }
-
+                if (TryDescribeWindow(processHandle, out var window))
+                    capturableWindows.Add(window);
                 return true;
             }, IntPtr.Zero);
             return capturableWindows;
+        }
+
+        public bool TryDescribeWindow(IntPtr windowHandle, out CapturableWindow window)
+        {
+            window = default;
+            if (!IsWindowVisible(windowHandle)) return false;
+
+            var title = CreateNewTitleStringBuilder();
+            GetWindowText(windowHandle, title);
+            if (IgnoreItemBecauseTitleIsNull(title)) return false;
+
+            try
+            {
+                var processId = GetWindowThreadProcessId(windowHandle);
+                if (IgnoreProcessByName(processId, out var process)) return false;
+                window = CreateCapturableWindow(windowHandle, title, process);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // Process exited or is inaccessible: not capturable.
+                Console.WriteLine($"Skipping window {windowHandle}. {ex.Message}");
+                return false;
+            }
         }
 
         private static List<CapturableWindow> CreateNewListOfCapturableWindows()
@@ -83,17 +87,14 @@ namespace CodescoveryCaptureManager.Domain.Services
             return processId;
         }
 
-        private static void AddProcessToCapturableWindowsList(List<CapturableWindow> capturableWindows, IntPtr processHandle, StringBuilder title,
-            Process process)
-        {
-            capturableWindows.Add(new CapturableWindow
+        private static CapturableWindow CreateCapturableWindow(IntPtr processHandle, StringBuilder title, Process process)
+            => new CapturableWindow
             {
                 Handle = processHandle,
                 Name = $"{title} ({process.ProcessName}.exe)",
                 Process = process,
                 ProcessName = process.ProcessName
-            });
-        }
+            };
 
         private static bool IsProcessInIgnoredList(Window[] ignoredWindows, IntPtr processHandle)
         {
