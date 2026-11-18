@@ -83,8 +83,9 @@ UI for profiles: toolbar **Profiles** button (ContextMenu rebuilt on open: profi
 `NativeMethods`: EnumWindows, GetWindowText, IsWindowVisible, GetWindowThreadProcessId, GetWindowRect, GetForegroundWindow, CreateDispatcherQueueController, CreateDirect3D11DeviceFromDXGIDevice, plus unused GDI (BitBlt, PrintWindow …). COM interfaces: `IGraphicsCaptureItemInterop`, `ICompositorDesktopInterop`, `ICompositorInterop`, `IDirect3DDxgiInterfaceAccess`, `IInitializeWithWindow`.
 
 ## 8. Dead / unused code
-`Events/MonitoredWindowsEvents`, `Helpers/OperatingSystemHelper` + `Enums/OperatingSystemType`, `Entities/HexColor`, `Extensions/WindowExtensions/CommonExtensions`, `Structs/RECT` (RECT used by GetWindowRect—verify), tray controller (commented out), Windows.Storage/AppRecording/UI.Xaml usings in picker, `src/.vs` and `src/.idea` committed. Verify before deleting.
+None known. Removed 2026-11-18 after checking for references: `Events/MonitoredWindowsEvents`, `Helpers/OperatingSystemHelper`, `Enums/OperatingSystemType`, `Entities/HexColor`, `Extensions/CommonExtensions`, `Extensions/WindowExtensions`, the commented-out tray registration in `Startup`. `Structs/RECT` stays: `NativeMethods.GetWindowRect` (picker thumbnails) uses it.
 
 ## 9. Project-level facts
 - Logging: `Domain/Diagnostics` (`AppLog` static facade over `RollingFileLog`), crash handlers in `App/Helpers/CrashReporter`; see logging.md. No `Console.WriteLine` (WinExe).
-- README (root + App/README.md) is user-facing (OBS setup).
+- `README.md` (root) is the user-facing documentation: features, install, use with OBS / web viewer, privacy, build. Keep it in step with user-visible changes. `App/README.md` only points to it.
+- One solution: `src/Codescovery.CaptureManager.sln`. `.gitignore` covers `.vs/`, `.idea/`, `*.user`, `bin/`, `obj/`.
