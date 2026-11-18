@@ -35,8 +35,15 @@ Compression only saved disk space (the Velopack package is compressed anyway) an
 
 Found and fixed by the test: the app reopened itself (window visible) after quitting when an update was pending; package marked x86; uninstall left the Run entry; publisher shown as the package id; winget template was one file and failed validation.
 
+## First real release: v2.0.0 (2026-11-18)
+- PR codescovery/capture-manager#1 merged into `main` (CI green on the PR and on `main`), then tag `v2.0.0` pushed on the merge commit. Chosen as 2.0.0, not 1.1.0: the app was largely rewritten since the 2021 release.
+- Release workflow passed on its first run (run 44333731538): publish, `vpk download github` (nothing usable to download, step still green), pack, `vpk upload github --publish`, checksum. Release is public and marked Latest with `CodescoveryCaptureManager-win-Setup.exe` (86.9 MB), `-win-Portable.zip` (79.4 MB), `CodescoveryCaptureManager-2.0.0-full.nupkg`, `releases.win.json`, `RELEASES`.
+- Chocolatey and winget steps were skipped: the repository has no `CHOCO_API_KEY` / `WINGET_TOKEN` secrets.
+- Workflow warnings, not failures: `actions/checkout@v4`, `setup-dotnet@v4`, `setup-node@v4` target the deprecated Node 20 runtime (same in `ci.yml`); `App.Exit()` hides `Application.Exit` (`App.xaml.cs`).
+- `main` requires one approving review and verified commit signatures (classic branch protection, admins not enforced). The branch commits were unsigned; the PR was merged by the repository admin.
+
 ## Not tested
-- The GitHub workflow itself (never run: needs a pushed tag, which publishes a release), `vpk upload github`, `vpk download github` against a real Velopack release.
+- The published `Setup.exe` was not downloaded and installed (only the equivalent local build was). The update path against the real GitHub feed (2.0.0 -> next version, delta built from `vpk download github`) can only be seen with the next release.
 - Chocolatey: `choco install` (needs the published download URL and an elevated shell), push, community moderation. There is no `chocolateyuninstall.ps1`; uninstall relies on Chocolatey's automatic uninstaller finding the HKCU entry.
 - winget: a real `winget install` (local manifests need an admin setting), the first submission, the `winget-releaser` step.
 - Installer UI (non-silent), SmartScreen / antivirus reaction to the unsigned Setup.exe (no code signing), install on a clean machine or another Windows user, update while the app is streaming, update when the app is closed by Windows shutdown.
