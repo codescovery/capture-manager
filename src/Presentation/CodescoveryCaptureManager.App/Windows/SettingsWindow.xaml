@@ -1,0 +1,272 @@
+<Window x:Class="CodescoveryCaptureManager.App.Windows.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="Settings" Width="760" Height="520" MinWidth="680" MinHeight="420"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{StaticResource WindowBrush}" Foreground="{StaticResource TextBrush}" TextElement.FontSize="13"
+        UseLayoutRounding="True">
+    <Window.Resources>
+        <Style x:Key="NavItem" TargetType="ListBoxItem">
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Margin" Value="0,0,0,2" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border Name="Surface" CornerRadius="6" Background="Transparent">
+                            <Grid>
+                                <Border Name="Marker" Width="3" Height="16" CornerRadius="1.5" HorizontalAlignment="Left"
+                                        Background="{StaticResource BrandBrush}" Visibility="Collapsed" />
+                                <ContentPresenter Margin="14,0,10,0" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{StaticResource CardBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{StaticResource CardHoverBrush}" />
+                                <Setter TargetName="Marker" Property="Visibility" Value="Visible" />
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SettingCard" TargetType="Border" BasedOn="{StaticResource Card}">
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+        <Style x:Key="SettingSwitch" TargetType="ToggleButton" BasedOn="{StaticResource MaterialDesignSwitchToggleButton}">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="16,0,0,0" />
+        </Style>
+        <Style x:Key="SettingRadio" TargetType="RadioButton" BasedOn="{StaticResource MaterialDesignRadioButton}">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="236" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Background="{StaticResource ChromeBrush}" BorderBrush="{StaticResource StrokeBrush}"
+                BorderThickness="0,0,1,0" Padding="12,20,12,12">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Text="Settings" Style="{StaticResource TitleText}" Margin="8,0,0,16" />
+                <ListBox Name="Navigation" Background="Transparent" BorderThickness="0"
+                         ItemContainerStyle="{StaticResource NavItem}" SelectionChanged="Navigation_OnSelectionChanged">
+                    <ListBoxItem Name="GeneralNav">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="TuneVariant" Width="16" Height="16" VerticalAlignment="Center" />
+                            <TextBlock Text="General" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem Name="FocusNav">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="EyeOffOutline" Width="16" Height="16" VerticalAlignment="Center" />
+                            <TextBlock Text="When nothing is focused" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem Name="WebViewerNav">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Web" Width="16" Height="16" VerticalAlignment="Center" />
+                            <TextBlock Text="Web viewer" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem Name="AboutNav">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="InformationOutline" Width="16" Height="16" VerticalAlignment="Center" />
+                            <TextBlock Text="About" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </ListBoxItem>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+            <Grid Margin="28,22,28,20">
+                <!-- General -->
+                <StackPanel Name="GeneralSection">
+                    <TextBlock Text="General" Style="{StaticResource TitleText}" Margin="0,0,0,16" />
+
+                    <Border Style="{StaticResource SettingCard}">
+                        <StackPanel>
+                            <TextBlock Text="Window title shown to viewers" Style="{StaticResource BodyText}" />
+                            <TextBlock Style="{StaticResource MutedText}" Margin="0,2,0,10"
+                                       Text="The name of the capture window in the Teams, Meet or OBS share picker." />
+                            <TextBox Name="ShareTitle" MaxLength="80" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Padding="10,8" LostFocus="ShareTitle_OnLostFocus" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingCard}">
+                        <DockPanel>
+                            <ToggleButton Name="RunInTray" DockPanel.Dock="Right" Style="{StaticResource SettingSwitch}"
+                                          Click="RunInTray_OnClick"
+                                          AutomationProperties.Name="Keep running in the tray when closed" />
+                            <StackPanel>
+                                <TextBlock Text="Keep running in the tray when closed" Style="{StaticResource BodyText}" />
+                                <TextBlock Style="{StaticResource MutedText}" Margin="0,2,0,0"
+                                           Text="Capture and the web viewer keep working without the window. Quit from the tray icon." />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingCard}">
+                        <DockPanel>
+                            <ToggleButton Name="StartWithWindows" DockPanel.Dock="Right" Style="{StaticResource SettingSwitch}"
+                                          Click="StartWithWindows_OnClick"
+                                          AutomationProperties.Name="Start with Windows" />
+                            <StackPanel>
+                                <TextBlock Text="Start with Windows" Style="{StaticResource BodyText}" />
+                                <TextBlock Style="{StaticResource MutedText}" Margin="0,2,0,0"
+                                           Text="Starts hidden in the tray when you sign in." />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingCard}">
+                        <StackPanel>
+                            <TextBlock Text="Pause hotkey" Style="{StaticResource BodyText}" />
+                            <TextBlock Style="{StaticResource MutedText}" Margin="0,2,0,10"
+                                       Text="Works from any program: hides everything from viewers at once. Press it again to resume." />
+                            <DockPanel>
+                                <Button Name="ClearPauseHotkey" DockPanel.Dock="Right" Content="Clear" Margin="8,0,0,0"
+                                        Style="{StaticResource SecondaryButton}" Click="ClearPauseHotkey_OnClick" />
+                                <TextBox Name="PauseHotkey" IsReadOnly="True" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         Padding="10,8" AutomationProperties.Name="Pause hotkey"
+                                         PreviewKeyDown="PauseHotkey_OnPreviewKeyDown"
+                                         GotKeyboardFocus="PauseHotkey_OnGotKeyboardFocus"
+                                         LostKeyboardFocus="PauseHotkey_OnLostKeyboardFocus" />
+                            </DockPanel>
+                            <TextBlock Name="PauseHotkeyHint" Style="{StaticResource MutedText}" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Name="VirtualDesktopCard" Style="{StaticResource SettingCard}">
+                        <DockPanel>
+                            <Button Name="VirtualDesktopButton" DockPanel.Dock="Right" Margin="16,0,0,0"
+                                    VerticalAlignment="Center" Style="{StaticResource SecondaryButton}"
+                                    Click="VirtualDesktop_OnClick" />
+                            <StackPanel>
+                                <TextBlock Text="Own virtual desktop" Style="{StaticResource BodyText}" />
+                                <TextBlock Style="{StaticResource MutedText}" Margin="0,2,0,0"
+                                           Text="Moves the capture window to a separate desktop so it stays out of your way while shared." />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- When nothing is focused -->
+                <StackPanel Name="FocusSection" Visibility="Collapsed">
+                    <TextBlock Text="When nothing is focused" Style="{StaticResource TitleText}" />
+                    <TextBlock Style="{StaticResource MutedText}" FontSize="13" Margin="0,4,0,16"
+                               Text="What viewers see while you work in a window you did not select." />
+
+                    <Border Style="{StaticResource SettingCard}">
+                        <StackPanel>
+                            <RadioButton Name="FallbackMessage" GroupName="Fallback" Style="{StaticResource SettingRadio}"
+                                         Content="Show a message" Checked="Fallback_OnChecked" />
+                            <RadioButton Name="FallbackKeepLast" GroupName="Fallback" Style="{StaticResource SettingRadio}"
+                                         Content="Keep the last window" Checked="Fallback_OnChecked" />
+                            <RadioButton Name="FallbackFixed" GroupName="Fallback" Style="{StaticResource SettingRadio}"
+                                         Content="Always show one window" Margin="0" Checked="Fallback_OnChecked" />
+                            <ComboBox Name="FallbackWindow" Margin="28,8,0,0" DisplayMemberPath="Name"
+                                      Style="{StaticResource MaterialDesignOutlinedComboBox}" Padding="10,8"
+                                      materialDesign:HintAssist.Hint="Window to show"
+                                      SelectionChanged="FallbackWindow_OnSelectionChanged" />
+                            <TextBlock Name="FallbackHint" Style="{StaticResource MutedText}" Margin="28,6,0,0"
+                                       Text="Choose windows first; one of them can then stay on screen." />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Web viewer -->
+                <StackPanel Name="WebViewerSection" Visibility="Collapsed">
+                    <TextBlock Text="Web viewer" Style="{StaticResource TitleText}" />
+                    <TextBlock Style="{StaticResource MutedText}" FontSize="13" Margin="0,4,0,16"
+                               Text="A browser page on this computer that shows exactly what the capture window shows. Share that tab instead of the window if you prefer." />
+
+                    <Border Style="{StaticResource SettingCard}">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                                <Button Name="CopyAddress" Content="Copy address" Style="{StaticResource SecondaryButton}"
+                                        Click="CopyAddress_OnClick" />
+                                <Button Name="OpenViewer" Content="Open" Margin="8,0,0,0" Style="{StaticResource PrimaryButton}"
+                                        Click="OpenViewer_OnClick" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Name="WebViewerAddress" Style="{StaticResource BodyText}" />
+                                <TextBlock Name="WebViewerState" Style="{StaticResource MutedText}" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+                    <TextBlock Style="{StaticResource MutedText}" Margin="2,4,0,0"
+                               Text="Works in Chrome and Edge. The page is only reachable from this computer." />
+                </StackPanel>
+
+                <!-- About -->
+                <StackPanel Name="AboutSection" Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                        <Image Source="pack://application:,,,/Assets/icon.png" Width="48" Height="48" />
+                        <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="Capture Manager" Style="{StaticResource TitleText}" />
+                            <TextBlock Name="VersionText" Style="{StaticResource MutedText}" FontSize="13" />
+                        </StackPanel>
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource MutedText}" FontSize="13" Margin="0,0,0,16"
+                               Text="Pick the windows you want to expose and share one window instead of your screen. Only the focused picked window is ever shown, so nothing else leaks." />
+
+                    <Border Style="{StaticResource SettingCard}">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="Report an issue" Margin="16,0,0,0" VerticalAlignment="Center"
+                                    Style="{StaticResource SecondaryButton}" Click="ReportIssue_OnClick" />
+                            <StackPanel>
+                                <TextBlock Text="Something not working?" Style="{StaticResource BodyText}" />
+                                <TextBlock Style="{StaticResource MutedText}" Margin="0,2,0,0"
+                                           Text="Opens a GitHub issue with your app version and Windows version filled in." />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingCard}">
+                        <DockPanel>
+                            <Button Name="OpenLogs" DockPanel.Dock="Right" Content="Open logs folder" Margin="16,0,0,0" VerticalAlignment="Center"
+                                    Style="{StaticResource SecondaryButton}" Click="OpenLogs_OnClick" />
+                            <StackPanel>
+                                <TextBlock Text="Logs" Style="{StaticResource BodyText}" />
+                                <TextBlock Style="{StaticResource MutedText}" Margin="0,2,0,0"
+                                           Text="Errors and crashes are saved on this computer only. Window titles are never written. Attach the log to an issue if it helps." />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Style="{StaticResource SecondaryButton}" Click="Repository_OnClick">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Github" Width="16" Height="16" VerticalAlignment="Center" />
+                                <TextBlock Text="GitHub" Margin="8,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Content="Releases" Margin="8,0,0,0" Style="{StaticResource SecondaryButton}"
+                                Click="Releases_OnClick" />
+                        <Button Name="CopyInfo" Content="Copy version info" Margin="8,0,0,0"
+                                Style="{StaticResource SecondaryButton}" Click="CopyInfo_OnClick" />
+                    </StackPanel>
+
+                    <TextBlock Style="{StaticResource MutedText}" Margin="0,20,0,0">
+                        <Run Text="© Codescovery  ·  " />
+                        <Hyperlink Click="License_OnClick" Foreground="{StaticResource BrandBrush}">MIT License</Hyperlink>
+                    </TextBlock>
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</Window>

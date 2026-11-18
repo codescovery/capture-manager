@@ -3,42 +3,259 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:CodescoveryCaptureManager.App.Windows"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         mc:Ignorable="d"
-        Title="Captured Window" Height="458" Width="800"  WindowStyle="SingleBorderWindow" Loaded="CapturedWindows_OnLoaded" Closing="CapturedWindows_OnClosing">
-    <DockPanel Background="#222222">
+        Title="Captured Window" Height="520" Width="880" MinWidth="620" MinHeight="340"
+        Loaded="CapturedWindows_OnLoaded" Closing="CapturedWindows_OnClosing" StateChanged="CapturedWindows_OnStateChanged"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource WindowBrush}" Foreground="{StaticResource TextBrush}" TextElement.FontSize="13"
+        UseLayoutRounding="True">
+    <!-- Native frame (shadow, rounded corners, snap) with our own title bar drawn in the caption area. -->
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="40" ResizeBorderThickness="6" GlassFrameThickness="0,0,0,1" CornerRadius="0"
+                      UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
+    <Window.Resources>
+        <Style x:Key="TitleBarButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Margin" Value="2,0" />
+            <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True" />
+        </Style>
+        <Style x:Key="TitleBarIconButton" TargetType="Button" BasedOn="{StaticResource TitleBarButton}">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style x:Key="CaptionGlyph" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="10" />
+        </Style>
+        <Style x:Key="StepNumber" TargetType="Border">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Background" Value="{StaticResource CardBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource StrokeBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+        </Style>
+        <Style x:Key="StepDigit" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource BrandBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </Window.Resources>
 
-        <Menu Name="CapturedWindowsMenu"  DockPanel.Dock="Top" Margin="0"  MaxHeight="150" FontSize="16" FontFamily="OCR A BT" Background="#222222" Foreground="White">
-            <Menu.ItemsPanel>
-                <ItemsPanelTemplate>
+    <Border Name="RootBorder" Background="{StaticResource WindowBrush}">
+        <DockPanel>
+            <!-- Title bar: identity + live status on the left, actions and caption buttons on the right. -->
+            <Border Name="TitleBar" DockPanel.Dock="Top" Height="40" Background="{StaticResource ChromeBrush}"
+                    BorderBrush="{StaticResource StrokeBrush}" BorderThickness="0,0,0,1">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <Button Name="WindowMinimizeButton" Style="{StaticResource CaptionButton}"
+                                WindowChrome.IsHitTestVisibleInChrome="True"
+                                Click="WindowMinimizeButton_OnClick" ToolTip="Minimize"
+                                AutomationProperties.Name="Minimize">
+                            <TextBlock Style="{StaticResource CaptionGlyph}" Text="&#xE921;" />
+                        </Button>
+                        <Button Name="WindowMaximizeButton" Style="{StaticResource CaptionButton}"
+                                WindowChrome.IsHitTestVisibleInChrome="True"
+                                Click="MaximizeButton_OnClick" ToolTip="Maximize"
+                                AutomationProperties.Name="Maximize">
+                            <TextBlock Name="MaximizeGlyph" Style="{StaticResource CaptionGlyph}" Text="&#xE922;" />
+                        </Button>
+                        <Button Name="WindowCloseButton" Style="{StaticResource CloseCaptionButton}"
+                                WindowChrome.IsHitTestVisibleInChrome="True"
+                                Click="WindowCloseButton_OnClick" ToolTip="Close"
+                                AutomationProperties.Name="Close">
+                            <TextBlock Style="{StaticResource CaptionGlyph}" Text="&#xE8BB;" />
+                        </Button>
+                    </StackPanel>
+
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,6,0">
+                        <Button Style="{StaticResource TitleBarButton}" Click="OpenCapturePicker"
+                                ToolTip="Choose which windows can appear here" AutomationProperties.Name="Windows">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="DockWindow" Width="16" Height="16" VerticalAlignment="Center" />
+                                <TextBlock Text="Windows" Margin="8,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Name="ProfilesButton" Style="{StaticResource TitleBarButton}"
+                                Click="ProfilesButton_OnClick" ToolTip="Saved sets of windows">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="BookmarkOutline" Width="16" Height="16" VerticalAlignment="Center" />
+                                <TextBlock Name="ProfileLabel" Text="Profiles" Margin="8,0,0,0" VerticalAlignment="Center"
+                                           MaxWidth="150" TextTrimming="CharacterEllipsis" />
+                                <materialDesign:PackIcon Kind="ChevronDown" Width="14" Height="14" Margin="4,1,0,0"
+                                                         VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" />
+                            </StackPanel>
+                            <Button.ContextMenu>
+                                <ContextMenu Name="ProfilesMenu" Opened="ProfilesMenu_OnOpened" />
+                            </Button.ContextMenu>
+                        </Button>
+                        <Border Width="1" Height="18" Margin="6,0" Background="{StaticResource StrokeBrush}" />
+                        <Button Name="PauseButton" Style="{StaticResource TitleBarIconButton}"
+                                Click="Pause_OnClick" AutomationProperties.Name="Pause"
+                                ToolTip="Pause: hide everything from viewers">
+                            <materialDesign:PackIcon Name="PauseIcon" Kind="Pause" Width="16" Height="16" />
+                        </Button>
+                        <Button Name="CleanViewButton" Style="{StaticResource TitleBarIconButton}"
+                                Click="CleanView_OnClick" AutomationProperties.Name="Hide controls"
+                                ToolTip="Hide these controls so viewers see only the window (Ctrl+H)">
+                            <materialDesign:PackIcon Kind="ArrowCollapseVertical" Width="16" Height="16" />
+                        </Button>
+                        <Button Name="SettingsButton" Style="{StaticResource TitleBarIconButton}" ToolTip="Settings"
+                                Click="SettingsButton_OnClick" AutomationProperties.Name="Settings">
+                            <materialDesign:PackIcon Kind="CogOutline" Width="16" Height="16" />
+                        </Button>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                        <Image Source="../Assets/icon.png" Width="20" Height="20" />
+                        <TextBlock Text="Capture Manager" Margin="10,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" />
+                        <Border Margin="14,0,0,0" Padding="8,0,10,0" Height="22" CornerRadius="11"
+                                Background="{StaticResource CardBrush}" BorderBrush="{StaticResource StrokeBrush}"
+                                BorderThickness="1" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse Name="StatusDot" Width="8" Height="8" Fill="{StaticResource FaintBrush}" />
+                                <TextBlock Name="StatusPillText" Text="Not set up" Margin="6,0,0,0" FontSize="12"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- Clean view: only this slim strip stays so the controls can come back. -->
+            <Grid Name="CleanViewBar" DockPanel.Dock="Top" Height="26" Visibility="Collapsed">
+                <Button HorizontalAlignment="Right" Margin="0,2,6,0" Style="{StaticResource StatusButton}"
+                        WindowChrome.IsHitTestVisibleInChrome="True" Click="CleanView_OnClick"
+                        ToolTip="Show the controls again (Ctrl+H)" AutomationProperties.Name="Show controls">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="ArrowExpandVertical" Width="13" Height="13" VerticalAlignment="Center" />
+                        <TextBlock Text="Show controls" Margin="6,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <!-- Status bar: what is on screen now, and the web viewer. -->
+            <Border Name="StatusBar" DockPanel.Dock="Bottom" Height="28" Background="{StaticResource ChromeBrush}"
+                    BorderBrush="{StaticResource StrokeBrush}" BorderThickness="0,1,0,0">
+                <DockPanel Margin="12,0,6,0">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Name="StreamStatsText" FontSize="12" Foreground="{StaticResource MutedBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <materialDesign:PackIcon Kind="EyeOutline" Width="14" Height="14" VerticalAlignment="Center"
+                                                 Foreground="{StaticResource MutedBrush}" />
+                        <TextBlock Name="ViewerCountText" Text="0 viewers" FontSize="12" Margin="5,0,10,0"
+                                   Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
+                        <Border Width="1" Height="14" Background="{StaticResource StrokeBrush}" />
+                        <Button Name="WebViewerButton" Style="{StaticResource StatusButton}" Margin="4,0,0,0"
+                                Click="OpenWebViewer_OnClick" ToolTip="Open the web viewer in your browser">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Web" Width="13" Height="13" VerticalAlignment="Center" />
+                                <TextBlock Name="WebViewerText" Text="Web viewer" Margin="6,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Name="CopyWebViewerButton" Style="{StaticResource StatusButton}" Width="24" Padding="0"
+                                Click="CopyWebViewer_OnClick" ToolTip="Copy the web viewer address"
+                                AutomationProperties.Name="Copy web viewer address">
+                            <materialDesign:PackIcon Name="CopyWebViewerIcon" Kind="ContentCopy" Width="12" Height="12" />
+                        </Button>
+                    </StackPanel>
+                    <TextBlock Name="StatusText" FontSize="12" Foreground="{StaticResource MutedBrush}"
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,12,0" />
+                </DockPanel>
+            </Border>
+
+            <Grid Name="ScreenCaptureGrid" Background="Transparent" SizeChanged="ScreenCaptureGrid_OnSizeChanged"
+                  MouseLeftButtonDown="ScreenCaptureGrid_OnMouseLeftButtonDown">
+                <!-- First run: the three steps, in order. -->
+                <StackPanel Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center" Width="440">
+                    <TextBlock Text="Share only the windows you choose" Style="{StaticResource TitleText}" />
+                    <TextBlock Style="{StaticResource MutedText}" FontSize="13" Margin="0,4,0,20"
+                               Text="Everything you do not pick stays private, even when it is on top." />
+
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="36" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource StepNumber}">
+                            <TextBlock Text="1" Style="{StaticResource StepDigit}" />
+                        </Border>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="Choose windows" Style="{StaticResource SectionText}" />
+                            <TextBlock Style="{StaticResource MutedText}" Margin="0,2,0,0"
+                                       Text="Pick the apps that are allowed to appear here." />
+                        </StackPanel>
+                    </Grid>
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="36" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource StepNumber}">
+                            <TextBlock Text="2" Style="{StaticResource StepDigit}" />
+                        </Border>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="Share this window" Style="{StaticResource SectionText}" />
+                            <TextBlock Style="{StaticResource MutedText}" Margin="0,2,0,0"
+                                       Text="In Teams, Meet or OBS share this window instead of your screen, or open the web viewer in a browser tab." />
+                        </StackPanel>
+                    </Grid>
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition  Width="*" />
-                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="36" />
+                            <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource StepNumber}">
+                            <TextBlock Text="3" Style="{StaticResource StepDigit}" />
+                        </Border>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="Work as usual" Style="{StaticResource SectionText}" />
+                            <TextBlock Style="{StaticResource MutedText}" Margin="0,2,0,0"
+                                       Text="Viewers see the chosen window you are focused on, and nothing else." />
+                        </StackPanel>
                     </Grid>
-                </ItemsPanelTemplate>
-            </Menu.ItemsPanel>
 
-            <MenuItem  Header="Settings"  Grid.Column="0"  Name="SettingsMenu" SubmenuOpened="SettingsMenu_OnSubmenuOpened" FontWeight="Bold"   Background="#222222" Foreground="White" Cursor="Hand" >
-                <MenuItem.Icon>
-                    <Image Source="/CodescoveryCaptureManager.App;component/Assets/menu.png"/>
-                </MenuItem.Icon>
-                <MenuItem Header="Select Capturing Window"  Name="SelectCapturingWindow" FontWeight="Regular" Foreground="Black"/>
-                <MenuItem Header="Change Window Title" IsCheckable="False" FontWeight="Regular"  Foreground="Black">
-                    <TextBox Name="CurrentWindowTitle" Width="300" />
-                </MenuItem>
-                <MenuItem Header="Virtual Desktop" IsEnabled="False"  Name="VirtualDesktopActions" FontWeight="Regular" Foreground="Black">
-                    <MenuItem Header="Move to Virtual Desktop" Click="MoveToVirtualDesktop_OnClick" IsEnabled="False"   Name="MoveToVirtualDesktop" FontWeight="Regular" Foreground="Black"/>
-                    <MenuItem Header="Close Virtual Desktop"  Click="CloseVirtualDesktop_OnClick" IsEnabled="False" Name="CloseVirtualDesktop" FontWeight="Regular" Foreground="Black"/>
-                </MenuItem>
-            </MenuItem>
+                    <StackPanel Orientation="Horizontal" Margin="36,22,0,0">
+                        <Button Content="Choose windows" Style="{StaticResource PrimaryButton}" Click="OpenCapturePicker" />
+                        <Button Content="Open web viewer" Name="EmptyStateWebViewerButton" Margin="8,0,0,0"
+                                Style="{StaticResource SecondaryButton}" Click="OpenWebViewer_OnClick" />
+                    </StackPanel>
+                </StackPanel>
 
-        </Menu>
-        <Expander Name="MenuExpander" IsExpanded="True" PreviewMouseLeftButtonDown="MenuExpander_OnClick" MaxHeight="25" DockPanel.Dock="Top" HorizontalAlignment="Right"/>
-        <Grid Name="ScreenCaptureGrid">
-            <Rectangle Fill="#222222" />
-        </Grid>
-    </DockPanel>
+                <StackPanel Name="PausedState" Visibility="Collapsed" HorizontalAlignment="Center"
+                            VerticalAlignment="Center" MaxWidth="420">
+                    <Border Width="56" Height="56" CornerRadius="28" Background="{StaticResource CardBrush}"
+                            BorderBrush="{StaticResource StrokeBrush}" BorderThickness="1" HorizontalAlignment="Center">
+                        <materialDesign:PackIcon Kind="Pause" Width="26" Height="26"
+                                                 Foreground="{StaticResource MutedBrush}"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="Paused" Style="{StaticResource TitleText}" FontSize="18"
+                               Margin="0,14,0,4" HorizontalAlignment="Center" TextAlignment="Center" />
+                    <TextBlock Style="{StaticResource MutedText}" FontSize="13" TextAlignment="Center"
+                               Text="Nothing is being shared, whatever window you focus. Resume to share again." />
+                </StackPanel>
+
+                <StackPanel Name="NoFocusState" Visibility="Collapsed" HorizontalAlignment="Center"
+                            VerticalAlignment="Center" MaxWidth="420">
+                    <Border Width="56" Height="56" CornerRadius="28" Background="{StaticResource CardBrush}"
+                            BorderBrush="{StaticResource StrokeBrush}" BorderThickness="1" HorizontalAlignment="Center">
+                        <materialDesign:PackIcon Kind="EyeOffOutline" Width="26" Height="26"
+                                                 Foreground="{StaticResource MutedBrush}"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="No selected window is focused" Style="{StaticResource TitleText}" FontSize="18"
+                               Margin="0,14,0,4" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+                    <TextBlock Style="{StaticResource MutedText}" FontSize="13" TextAlignment="Center"
+                               Text="Nothing is being shared right now. Click one of the windows you picked and it appears here." />
+                </StackPanel>
+            </Grid>
+        </DockPanel>
+    </Border>
 </Window>

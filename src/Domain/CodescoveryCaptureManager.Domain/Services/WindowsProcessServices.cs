@@ -1,8 +1,10 @@
-﻿using System;
+﻿using CodescoveryCaptureManager.Domain.Diagnostics;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Windows;
 using System.Windows.Interop;
 using CodescoveryCaptureManager.Domain.Interfaces;
 using CodescoveryCaptureManager.Domain.Interop;
@@ -17,45 +19,97 @@ namespace CodescoveryCaptureManager.Domain.Services
         {
         }
         private IReadOnlyList<string> IgnoredProcess()
-            => new List<string> { "applicationframehost", "shellexperiencehost", "systemsettings", "winstore.app", "searchui" }; 
-        public IReadOnlyList<CapturableWindow> GetOpenedWindows(System.Windows.Window ignoredWindow = null!)
+            => new List<string> { "applicationframehost", "shellexperiencehost", "systemsettings", "winstore.app", "searchui", "explorer" };
+        public IReadOnlyList<CapturableWindow> GetOpenedWindows(params System.Windows.Window[] ignoredWindows)
         {
-            var capturableWindows = new List<CapturableWindow>();
+            var capturableWindows = CreateNewListOfCapturableWindows();
             NativeMethods.EnumWindows((processHandle, lParam) =>
             {
-                // ignore invisible windows
-                if (!NativeMethods.IsWindowVisible(processHandle))
-                    return true;
-
-                // ignore untitled windows
-                var title = new StringBuilder(1024);
-                NativeMethods.GetWindowText(processHandle, title, title.Capacity);
-                if (string.IsNullOrWhiteSpace(title.ToString()))
-                    return true;
-
-                // ignore Window
-                if (ignoredWindow != null)
-                    if (new WindowInteropHelper(ignoredWindow).Handle == processHandle)
-                        return true;
-                
-
-
-                NativeMethods.GetWindowThreadProcessId(processHandle, out var processId);
-
-                // ignore by process name
-                var process = Process.GetProcessById((int)processId);
-                if (IgnoredProcess().Contains(process.ProcessName.ToLower()))
-                    return true;
-                capturableWindows.Add(new CapturableWindow
-                {
-                    Handle = processHandle,
-                    Name = $"{title} ({process.ProcessName}.exe)",
-                    Process = process
-                });
-
+                if (IsProcessInIgnoredList(ignoredWindows, processHandle)) return true;
+                if (TryDescribeWindow(processHandle, out var window))
+                    capturableWindows.Add(window);
                 return true;
             }, IntPtr.Zero);
             return capturableWindows;
+        }
+
+        public bool TryDescribeWindow(IntPtr windowHandle, out CapturableWindow window)
+        {
+            window = default;
+            if (!IsWindowVisible(windowHandle)) return false;
+
+            var title = CreateNewTitleStringBuilder();
+            GetWindowText(windowHandle, title);
+            if (IgnoreItemBecauseTitleIsNull(title)) return false;
+
+            try
+            {
+                var processId = GetWindowThreadProcessId(windowHandle);
+                if (IgnoreProcessByName(processId, out var process)) return false;
+                window = CreateCapturableWindow(windowHandle, title, process);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // Process exited or is inaccessible: not capturable.
+                AppLog.Warning($"Skipping window {windowHandle}. {ex.Message}");
+                return false;
+            }
+        }
+
+        private static List<CapturableWindow> CreateNewListOfCapturableWindows()
+        {
+            return new List<CapturableWindow>();
+        }
+
+        private static StringBuilder CreateNewTitleStringBuilder()
+        {
+            return new StringBuilder(1024);
+        }
+
+        private static bool IsWindowVisible(IntPtr processHandle)
+        {
+            return NativeMethods.IsWindowVisible(processHandle);
+        }
+
+        private static bool IgnoreItemBecauseTitleIsNull(StringBuilder title)
+        {
+            return string.IsNullOrWhiteSpace(title.ToString());
+        }
+
+        private static void GetWindowText(IntPtr processHandle, StringBuilder title)
+        {
+            NativeMethods.GetWindowText(processHandle, title, title.Capacity);
+        }
+
+        private static uint GetWindowThreadProcessId(IntPtr processHandle)
+        {
+            NativeMethods.GetWindowThreadProcessId(processHandle, out var processId);
+            return processId;
+        }
+
+        private static CapturableWindow CreateCapturableWindow(IntPtr processHandle, StringBuilder title, Process process)
+            => new CapturableWindow
+            {
+                Handle = processHandle,
+                Name = $"{title} ({process.ProcessName}.exe)",
+                Process = process,
+                ProcessName = process.ProcessName
+            };
+
+        private static bool IsProcessInIgnoredList(Window[] ignoredWindows, IntPtr processHandle)
+        {
+            var ignoredWindowsList = ignoredWindows?.ToList();
+            if (ignoredWindowsList == null || !ignoredWindowsList.Any()) return false;
+            return ignoredWindowsList.Any(i => new WindowInteropHelper(i).Handle == processHandle);
+        }
+
+        private bool IgnoreProcessByName(uint processId, out Process process)
+        {
+            process = Process.GetProcessById((int) processId);
+            if (IgnoredProcess().Contains(process.ProcessName.ToLower()))
+                return true;
+            return false;
         }
 
         public void Dispose()

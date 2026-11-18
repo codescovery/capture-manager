@@ -1,0 +1,19 @@
+PackageIdentifier: Codescovery.CaptureManager
+PackageVersion: 0.0.0
+PackageLocale: en-US
+Publisher: Codescovery
+PublisherUrl: https://github.com/codescovery
+PublisherSupportUrl: https://github.com/codescovery/capture-manager/issues
+PackageName: Codescovery Capture Manager
+PackageUrl: https://github.com/codescovery/capture-manager
+License: MIT
+LicenseUrl: https://github.com/codescovery/capture-manager/blob/main/LICENSE
+ShortDescription: Share one app window that shows only the focused window you picked.
+Description: Pick which windows to expose and share this single app window in Teams, OBS and similar tools instead of the whole screen. Windows you did not pick are never shown.
+Tags:
+  - capture
+  - obs
+  - screen-sharing
+  - streaming
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

@@ -1,8 +1,8 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <UseWPF>true</UseWPF>
     <ApplicationManifest>app.manifest</ApplicationManifest>
 	  <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
@@ -12,7 +12,7 @@
 	  <Product>CodescoveryCaptureManager</Product>
 	  <PackageId>CodescoveryCaptureManager</PackageId>
 	  <PackageIcon>icon32.png</PackageIcon>
-	  <RepositoryUrl>https://github.com/codescovery/captureManager</RepositoryUrl>
+	  <RepositoryUrl>https://github.com/codescovery/capture-manager</RepositoryUrl>
 	  <RepositoryType>git</RepositoryType>
 	  <Copyright>Codescovery</Copyright>
 	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -20,19 +20,28 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Assets\icon.ico" />
+    <None Remove="Assets\icon.png" />
+    <None Remove="Assets\icon.svg" />
     <None Remove="Assets\menu.png" />
+    <PackageReference Include="H.NotifyIcon.Wpf" Version="2.4.1" />
+    <PackageReference Include="MaterialDesignThemes" Version="5.2.1" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.0" />
+    <PackageReference Include="Velopack" Version="1.2.161" />
     <ProjectReference Include="..\..\Domain\CodescoveryCaptureManager.Domain\CodescoveryCaptureManager.Domain.csproj" />
-    <Resource Include="Assets\icon32.png">
-      <Pack>True</Pack>
-      <PackagePath></PackagePath>
-    </Resource>
   </ItemGroup>
 
+  <ItemGroup>
+    <ApplicationDefinition Remove="App.xaml" />
+    <Page Include="App.xaml" />
+  </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="Assets\menu.png">
+    <Resource Include="Assets\icon.ico">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>
+    <Resource Include="Assets\icon.png" />
+    <Resource Include="Assets\icon.svg" />
   </ItemGroup>
 
 </Project>

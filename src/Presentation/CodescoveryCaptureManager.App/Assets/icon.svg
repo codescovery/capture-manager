@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Monogram: a "C" (Capture, Codescovery) holding the one window that is shown. -->
+  <defs>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#A3D85A"/>
+      <stop offset="1" stop-color="#6FA82E"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="#171A14"/>
+  <path d="M372 150 H196 a56 56 0 0 0 -56 56 V306 a56 56 0 0 0 56 56 H372" fill="none" stroke="url(#green)" stroke-width="52" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="236" y="216" width="150" height="80" rx="20" fill="#FFFFFF"/>
+</svg>

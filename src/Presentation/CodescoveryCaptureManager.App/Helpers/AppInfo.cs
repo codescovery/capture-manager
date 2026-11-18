@@ -1,0 +1,58 @@
+using CodescoveryCaptureManager.Domain.Diagnostics;
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
+
+namespace CodescoveryCaptureManager.App.Helpers
+{
+    /// <summary>Static facts about the app (version, links) shown in the About dialog and menu.</summary>
+    internal static class AppInfo
+    {
+        public const string Name = "Capture Manager";
+        public const string RepositoryUrl = "https://github.com/codescovery/capture-manager";
+        public const string IssuesUrl = RepositoryUrl + "/issues";
+        public const string ReleasesUrl = RepositoryUrl + "/releases";
+        public const string LicenseUrl = RepositoryUrl + "/blob/main/LICENSE";
+
+        public static string Version => AppVersion.Current;
+
+        /// <summary>Opens a pre-filled "new issue" page. Only app version and OS are included, nothing about the user's windows.</summary>
+        public static string NewIssueUrl()
+            => $"{IssuesUrl}/new?body={Uri.EscapeDataString(BuildIssueTemplate())}";
+
+        public static string DiagnosticInfo()
+            => $"{Name} {Version}{Environment.NewLine}OS: {RuntimeInformation.OSDescription}{Environment.NewLine}Runtime: {RuntimeInformation.FrameworkDescription}";
+
+        public static void OpenInBrowser(string url)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warning($"Could not open {url}. {ex.Message}");
+            }
+        }
+
+        /// <summary>Opens the folder with the log files in Explorer.</summary>
+        public static void OpenLogsFolder()
+        {
+            try
+            {
+                var directory = Path.GetDirectoryName(AppLog.FilePath);
+                Directory.CreateDirectory(directory);
+                Process.Start(new ProcessStartInfo(directory) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warning($"Could not open the logs folder. {ex.Message}");
+            }
+        }
+
+        // The log path holds the Windows user name, so the issue only says where to find the file.
+        private static string BuildIssueTemplate()
+            => $"**What happened?**\n\n\n**What did you expect?**\n\n\n**Steps to reproduce**\n1. \n\n**Log**\nSettings > About > Open logs folder, then attach `{RollingFileLog.FileName}` if it helps.\n\n---\n{DiagnosticInfo()}";
+    }
+}

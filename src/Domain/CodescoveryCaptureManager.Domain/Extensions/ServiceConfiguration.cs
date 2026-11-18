@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using CodescoveryCaptureManager.Domain.Interfaces;
 using CodescoveryCaptureManager.Domain.Services;
+using CodescoveryCaptureManager.Domain.Streaming;
 using CodescoveryCaptureManager.Domain.Structs;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -12,6 +13,19 @@ namespace CodescoveryCaptureManager.Domain.Extensions
 
         public static IServiceCollection AddWindowsProcessServices(this IServiceCollection services, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
         => services.InjectService<IWindowsProcessServices, WindowsProcessServices>(serviceLifetime);
+
+        public static IServiceCollection AddFocusBridge(this IServiceCollection services)
+        {
+            services.AddSingleton(_ => FocusBridgeOptions.FromEnvironment());
+            services.AddSingleton<IVideoStream, VideoStreamService>();
+            return services.InjectService<IFocusBridge, FocusBridgeService>(ServiceLifetime.Singleton);
+        }
+
+        public static IServiceCollection AddProfiles(this IServiceCollection services)
+        {
+            services.AddSingleton<IProfileStore>(_ => new JsonProfileStore(JsonProfileStore.DefaultDirectory));
+            return services.InjectService<IProfileService, ProfileService>(ServiceLifetime.Singleton);
+        }
 
         public static IServiceCollection AddCapturableWindowsMonitoringService(this IServiceCollection services,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)

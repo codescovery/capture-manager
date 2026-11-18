@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Runtime.InteropServices;
-using Windows.UI.Composition;
 
 namespace CodescoveryCaptureManager.Domain.Interfaces
 {
@@ -10,13 +9,10 @@ namespace CodescoveryCaptureManager.Domain.Interfaces
     [ComVisible(true)]
     public interface ICompositorInterop
     {
-        ICompositionSurface CreateCompositionSurfaceForHandle(
-            IntPtr swapChain);
+        IntPtr CreateCompositionSurfaceForHandle(IntPtr swapChain);
 
-        ICompositionSurface CreateCompositionSurfaceForSwapChain(
-            IntPtr swapChain);
+        IntPtr CreateCompositionSurfaceForSwapChain(IntPtr swapChain);
 
-        CompositionGraphicsDevice CreateGraphicsDevice(
-            IntPtr renderingDevice);
+        IntPtr CreateGraphicsDevice(IntPtr renderingDevice);
     }
 }

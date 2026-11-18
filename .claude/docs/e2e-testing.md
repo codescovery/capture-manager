@@ -1,0 +1,31 @@
+# End-to-end testing (no test projects exist)
+
+`.claude/scripts/e2e-focus.ps1` drives the real app through Windows UI Automation (UIA): opens Notepad + the app, opens the picker, selects Notepad by search, Apply, then switches the foreground window and reads which overlay the capture window shows.
+
+Run (Debug build, no other app instance running, Edge open for the focus script):
+
+```bash
+dotnet build src/Codescovery.CaptureManager.sln
+powershell -File .claude/scripts/e2e-focus.ps1
+```
+
+Expected output: `0) … BLANK + NoFocus message` (nothing shown right after Apply), `A) … BLANK + NoFocus message`, `B) fixed=Notepad … CAPTURING`, `C) … BLANK + NoFocus message`.
+
+## How it observes state
+- Overlay text elements are in the UIA tree only while visible: `No selected window is focused` = blank view, `Share only the windows you choose` = nothing picked (first-run guide), neither = a window is being shown.
+- It cannot see the composition visual itself (pixels); "CAPTURING" means "no overlay", inferred from `WindowCaptureService.IsCapturing()` driving `UpdateEmptyState()`.
+
+## Gotchas learned
+- The picker is an **owned** window: find it as a Window *descendant of the main window element*, not under the UIA root.
+- Moving focus needs an Alt key tap before `SetForegroundWindow` (foreground lock).
+- Make the script DPI aware (`SetProcessDPIAware`) before using UIA rectangles for real mouse clicks; the app may sit on a monitor with negative coordinates.
+- A running app instance locks `bin\Debug` DLLs; build with `-p:OutDir=<other dir>` or close the app first. Stale instances caused a false "still captures unfocused windows" report once.
+
+## Scripts
+- `e2e-focus.ps1`: focus-follow, blank-on-unpicked, fallback modes (self-contained).
+- `e2e-profiles.ps1`: save profile from picker, menu, `profiles.json`, restore + auto-apply after restart. Uses `CAPTURE_MANAGER_DATA_DIR` so real profiles are untouched.
+- `e2e-lib.ps1`: shared UIA helpers (`Start-TestApp`, `Open-Picker-And-Select`, `Overlay-State`, `Get-Menu-Items`, …) for new scripts.
+
+Unit tests: `dotnet test src/Codescovery.CaptureManager.sln` (xUnit, `src/Tests`).
+
+- Settings are a window now (`SettingsButton` -> owned window `Settings`; nav items `GeneralNav` / `FocusNav` / `WebViewerNav` / `AboutNav`, fallback radios by name). `e2e-focus.ps1` was updated for it but NOT re-run after the change. The scripts start Notepad: Windows 11 Notepad restores its previous session, so close private files first.
