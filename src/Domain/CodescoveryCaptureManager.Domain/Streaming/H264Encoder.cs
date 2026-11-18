@@ -1,3 +1,4 @@
+using CodescoveryCaptureManager.Domain.Diagnostics;
 using System;
 using System.Diagnostics;
 using System.Threading;
@@ -195,7 +196,7 @@ namespace CodescoveryCaptureManager.Domain.Streaming
             }
             catch (SharpDXException ex)
             {
-                Console.WriteLine($"Encoder event failed. {ex.Message}");
+                AppLog.Error("Encoder event failed.", ex);
                 return null;
             }
         }
@@ -249,7 +250,7 @@ namespace CodescoveryCaptureManager.Domain.Streaming
             }
             catch (Exception ex) when (ex is SharpDXException || ex is InvalidOperationException)
             {
-                Console.WriteLine($"Encoder input failed. {ex.Message}");
+                AppLog.Error("Encoder input failed.", ex);
             }
         }
 
@@ -352,7 +353,7 @@ namespace CodescoveryCaptureManager.Domain.Streaming
 
             if (hr < 0)
             {
-                Console.WriteLine($"Encoder output failed (0x{hr:X8}).");
+                AppLog.Error($"Encoder output failed (0x{hr:X8}).");
                 return Discard(provided, false);
             }
 

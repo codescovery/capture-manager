@@ -1,3 +1,4 @@
+using CodescoveryCaptureManager.Domain.Diagnostics;
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
@@ -61,10 +62,11 @@ namespace CodescoveryCaptureManager.Domain.Services
                 _started = true;
                 _videoStream.FrameEncoded += OnFrameEncoded;
                 _ = AcceptLoopAsync(_cancellationTokenSource.Token);
+                AppLog.Info($"Web viewer listening on {Url}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Focus bridge not started. {ex.Message}");
+                AppLog.Error("Focus bridge not started.", ex);
             }
         }
 
@@ -151,7 +153,7 @@ namespace CodescoveryCaptureManager.Domain.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Focus bridge client failed. {ex.Message}");
+                AppLog.Warning($"Focus bridge client failed. {ex.Message}");
             }
         }
 
@@ -181,7 +183,7 @@ namespace CodescoveryCaptureManager.Domain.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Focus bridge site failed. {ex.Message}");
+                AppLog.Error("Focus bridge site failed.", ex);
             }
         }
 
@@ -205,6 +207,7 @@ namespace CodescoveryCaptureManager.Domain.Services
             var client = new ClientConnection(socket);
             _clients[clientId] = client;
             _videoStream.SetViewerCount(_clients.Count);
+            AppLog.Info($"Viewer connected ({_clients.Count} now).");
             try
             {
                 await client.SendTextAsync(_lastMessage, cancellationToken);
@@ -215,6 +218,7 @@ namespace CodescoveryCaptureManager.Domain.Services
             {
                 _clients.TryRemove(clientId, out _);
                 _videoStream.SetViewerCount(_clients.Count);
+                AppLog.Info($"Viewer disconnected ({_clients.Count} now).");
                 client.Dispose();
             }
         }
@@ -293,7 +297,7 @@ namespace CodescoveryCaptureManager.Domain.Services
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Focus bridge send failed. {ex.Message}");
+                    AppLog.Warning($"Focus bridge send failed. {ex.Message}");
                 }
                 finally
                 {

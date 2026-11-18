@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CodescoveryCaptureManager.Domain.Diagnostics;
+using System;
 using CodescoveryCaptureManager.App.Helpers;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,7 +26,7 @@ namespace CodescoveryCaptureManager.App.Updates
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Update check failed. {ex.Message}");
+                AppLog.Warning($"Update check failed. {ex.Message}");
             }
         }
     }

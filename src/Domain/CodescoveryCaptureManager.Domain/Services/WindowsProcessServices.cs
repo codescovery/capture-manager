@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CodescoveryCaptureManager.Domain.Diagnostics;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -51,7 +52,7 @@ namespace CodescoveryCaptureManager.Domain.Services
             catch (Exception ex)
             {
                 // Process exited or is inaccessible: not capturable.
-                Console.WriteLine($"Skipping window {windowHandle}. {ex.Message}");
+                AppLog.Warning($"Skipping window {windowHandle}. {ex.Message}");
                 return false;
             }
         }

@@ -10,6 +10,7 @@ Source of truth for agents. Update when code changes.
 | [release-and-distribution.md](release-and-distribution.md) | CI, tag-driven release, winget/choco packaging, auto-update status |
 | [web-ui.md](web-ui.md) | React web UI (`src/Web`), served by the app; focus-bridge protocol, build, limits |
 | [profiles.md](profiles.md) | Saved window profiles: rule model, storage, service, privacy |
+| [logging.md](logging.md) | File log (`AppLog`, rotation, privacy rule) and crash handlers |
 | [e2e-testing.md](e2e-testing.md) | UI-Automation e2e script (`.claude/scripts/e2e-focus.ps1`) for focus/fallback behaviour, gotchas |
 
 ## Maintenance rule

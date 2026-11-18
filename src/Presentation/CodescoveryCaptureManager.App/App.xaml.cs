@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Linq;
 using System.Windows;
+using System.Windows.Threading;
 using Windows.System;
+using CodescoveryCaptureManager.App.Helpers;
 using CodescoveryCaptureManager.App.Tray;
 using CodescoveryCaptureManager.App.Updates;
 using CodescoveryCaptureManager.App.Windows;
@@ -30,6 +32,17 @@ namespace CodescoveryCaptureManager.App
             _startup = new Startup(this);
             _controller = CoreMessagingHelper.CreateDispatcherQueueControllerForCurrentThread();
             SessionEnding += (_, _) => ExitRequested = true;
+            DispatcherUnhandledException += OnDispatcherUnhandledException;
+        }
+
+        // A failure on the UI thread leaves the capture window in an unknown state: record it, tell the user, quit.
+        private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+        {
+            e.Handled = true;
+            if (!CrashReporter.ReportFatal(e.Exception)) return;
+
+            ExitRequested = true;
+            Shutdown(CrashReporter.CrashExitCode);
         }
 
         private void App_OnStartup(object sender, StartupEventArgs e)

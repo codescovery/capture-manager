@@ -1,3 +1,4 @@
+using CodescoveryCaptureManager.Domain.Diagnostics;
 using System;
 using System.Diagnostics;
 using System.Threading;
@@ -104,7 +105,7 @@ namespace CodescoveryCaptureManager.Domain.Streaming
             {
                 _failed = true;
                 DisposePipeline();
-                Console.WriteLine($"Video stream not started. {ex.Message}");
+                AppLog.Error("Video stream not started.", ex);
                 return false;
             }
         }
@@ -120,7 +121,7 @@ namespace CodescoveryCaptureManager.Domain.Streaming
             _converter = new Nv12Converter(device, contentWidth, contentHeight, width, height, FramesPerSecond);
             _encoder = new H264Encoder(device, width, height, FramesPerSecond, BitrateFor(width, height));
             _encoder.FrameEncoded += OnEncoded;
-            Console.WriteLine($"Video stream: {width}x{height} {(_encoder.IsHardware ? "hardware" : "software")} H.264.");
+            AppLog.Info($"Video stream: {width}x{height} {(_encoder.IsHardware ? "hardware" : "software")} H.264.");
         }
 
         private void OnEncoded(EncodedFrame frame)

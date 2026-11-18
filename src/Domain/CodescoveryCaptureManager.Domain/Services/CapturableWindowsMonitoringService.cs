@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CodescoveryCaptureManager.Domain.Diagnostics;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -33,8 +34,10 @@ namespace CodescoveryCaptureManager.Domain.Services
 
             var token = _cancellationTokenSource.Token;
             using var watcher = new ForegroundWindowWatcher(CheckForegroundWindow);
-            if (!watcher.IsActive)
-                Console.WriteLine("Foreground hook not installed; focus is checked once per interval only.");
+            if (watcher.IsActive)
+                AppLog.Info("Monitoring started with the foreground hook.");
+            else
+                AppLog.Warning("Foreground hook not installed; focus is checked once per interval only.");
 
             SyncWithForegroundWindow();
             while (!token.IsCancellationRequested)
@@ -69,7 +72,7 @@ namespace CodescoveryCaptureManager.Domain.Services
             catch (Exception ex)
             {
                 // A failure in one check (or in a subscriber) must not kill monitoring.
-                Console.WriteLine($"Foreground check failed. {ex.Message}");
+                AppLog.Error("Foreground check failed.", ex);
             }
         }
 
@@ -104,13 +107,14 @@ namespace CodescoveryCaptureManager.Domain.Services
 
             var releasedWindow = _capturableWindows[processInteropHandle];
             _capturableWindows.Remove(processInteropHandle);
+            AppLog.Info($"Released {Describe(releasedWindow)}.");
             try
             {
                 MonitoredWindowClosed?.Invoke(releasedWindow);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Closed window handler failed for {releasedWindow.Name}. {ex.Message}");
+                AppLog.Error($"Closed window handler failed for {Describe(releasedWindow)}.", ex);
             }
         }
 
@@ -124,14 +128,22 @@ namespace CodescoveryCaptureManager.Domain.Services
 
         public void AddMonitoringWindow(CapturableWindow capturableWindow)
         {
-            if (!IsMonitored(capturableWindow.Handle))
-                _capturableWindows.Add(capturableWindow.Handle,capturableWindow);
+            if (IsMonitored(capturableWindow.Handle)) return;
+
+            _capturableWindows.Add(capturableWindow.Handle,capturableWindow);
+            AppLog.Info($"Picked {Describe(capturableWindow)}.");
         }
+
+        // Process name and handle only: window titles stay out of the log.
+        private static string Describe(CapturableWindow window)
+            => $"{window.ProcessName} 0x{window.Handle.ToInt64():X}";
 
         public void RemoveMonitoringWindow(IntPtr processInteropHandle)
         {
-            if (IsMonitored(processInteropHandle))
-                _capturableWindows.Remove(processInteropHandle);
+            if (!IsMonitored(processInteropHandle)) return;
+
+            AppLog.Info($"Unpicked {Describe(_capturableWindows[processInteropHandle])}.");
+            _capturableWindows.Remove(processInteropHandle);
         }
 
 

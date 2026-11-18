@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CodescoveryCaptureManager.Domain.Diagnostics;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -112,7 +113,7 @@ namespace CodescoveryCaptureManager.App.Windows
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Monitoring stopped unexpectedly. {ex.Message}");
+                AppLog.Error("Monitoring stopped unexpectedly.", ex);
             }
         }
 
@@ -336,10 +337,11 @@ namespace CodescoveryCaptureManager.App.Windows
                 _capturableWindowsMonitoringService.SyncWithForegroundWindow();
                 RefreshView();
                 ProfilesButton.ToolTip = DescribeApplyResult(result);
+                AppLog.Info($"Profile applied: {result.BoundWindows} window(s) bound, {result.WaitingRules.Count} rule(s) waiting.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Could not apply profile. {ex.Message}");
+                AppLog.Error("Could not apply profile.", ex);
             }
         }
 
@@ -418,12 +420,13 @@ namespace CodescoveryCaptureManager.App.Windows
                 _windowCaptureService.StartCapture(item, window.Handle);
                 _shownWindowName = window.Name;
                 _shownWindowSize = $"{item.Size.Width} \u00D7 {item.Size.Height}";
+                AppLog.Info($"Showing {window.ProcessName} 0x{window.Handle.ToInt64():X} ({item.Size.Width}x{item.Size.Height}).");
                 RefreshView();
             }
             catch (Exception ex)
             {
                 _windowCaptureService?.StopCapture();
-                Console.WriteLine($"Error capturing {window.Name}. {ex.Message}");
+                AppLog.Error($"Error capturing {window.ProcessName} 0x{window.Handle.ToInt64():X}.", ex);
             }
         }
 

@@ -51,7 +51,8 @@ Domain/Services
    └─ ProfileService (internal, IProfileService, singleton) + JsonProfileStore (IProfileStore): saved window sets as rules; see profiles.md
 
 Domain/Profiles: WindowRule, CaptureProfile, AppSettings, WindowRuleMatcher (pure), WindowRuleFactory, WindowTitles
-Tests: Tests/CodescoveryCaptureManager.Domain.Tests (xUnit; matcher, factory, store, service). CI runs them.
+Domain/Diagnostics: AppLog (static, no-op until Start), RollingFileLog (size rotation, repeat collapse). App/Helpers/CrashReporter.
+Tests: Tests/CodescoveryCaptureManager.Domain.Tests (xUnit; matcher, factory, store, service, log). CI runs them.
 ```
 
 UI for profiles: toolbar **Profiles** button (ContextMenu rebuilt on open: profiles, "Save current windows as profile…", "Delete profile ▸"); picker footer "Save as profile…"; `SaveProfileDialog` (+ `RuleRow` edit model). Applying a profile = `ProfileService.Apply` (replace monitored set) then StopCapture + SyncWithForegroundWindow. Picker Apply clears the active profile (manual selection). Active profile + fallback mode (message/keep last) persist in settings.json and the last profile is re-applied on start (`CapturedWindows_OnLoaded`).
@@ -85,5 +86,5 @@ UI for profiles: toolbar **Profiles** button (ContextMenu rebuilt on open: profi
 `Events/MonitoredWindowsEvents`, `Helpers/OperatingSystemHelper` + `Enums/OperatingSystemType`, `Entities/HexColor`, `Extensions/WindowExtensions/CommonExtensions`, `Structs/RECT` (RECT used by GetWindowRect—verify), tray controller (commented out), Windows.Storage/AppRecording/UI.Xaml usings in picker, `src/.vs` and `src/.idea` committed. Verify before deleting.
 
 ## 9. Project-level facts
-- No tests, CI, installer (solution has empty "Installer" folder), logging (only `Console.WriteLine`).
+- Logging: `Domain/Diagnostics` (`AppLog` static facade over `RollingFileLog`), crash handlers in `App/Helpers/CrashReporter`; see logging.md. No `Console.WriteLine` (WinExe).
 - README (root + App/README.md) is user-facing (OBS setup).

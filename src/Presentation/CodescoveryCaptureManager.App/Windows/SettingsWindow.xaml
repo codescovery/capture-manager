@@ -218,6 +218,18 @@
                         </DockPanel>
                     </Border>
 
+                    <Border Style="{StaticResource SettingCard}">
+                        <DockPanel>
+                            <Button Name="OpenLogs" DockPanel.Dock="Right" Content="Open logs folder" Margin="16,0,0,0" VerticalAlignment="Center"
+                                    Style="{StaticResource SecondaryButton}" Click="OpenLogs_OnClick" />
+                            <StackPanel>
+                                <TextBlock Text="Logs" Style="{StaticResource BodyText}" />
+                                <TextBlock Style="{StaticResource MutedText}" Margin="0,2,0,0"
+                                           Text="Errors and crashes are saved on this computer only. Window titles are never written. Attach the log to an issue if it helps." />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
                     <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                         <Button Style="{StaticResource SecondaryButton}" Click="Repository_OnClick">
                             <StackPanel Orientation="Horizontal">

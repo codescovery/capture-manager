@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CodescoveryCaptureManager.Domain.Diagnostics;
+using System;
 using Windows.Graphics;
 using Windows.Graphics.Capture;
 using Windows.Graphics.DirectX;
@@ -99,7 +100,7 @@ namespace CodescoveryCaptureManager.Domain.Services
                 catch (Exception ex)
                 {
                     // Target window may have closed or the device been lost mid-frame.
-                    Console.WriteLine($"Frame processing failed. {ex.Message}");
+                    AppLog.Error("Frame processing failed.", ex);
                 }
             }
         }
@@ -113,7 +114,7 @@ namespace CodescoveryCaptureManager.Domain.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Frame tap failed. {ex.Message}");
+                AppLog.Error("Frame tap failed.", ex);
             }
         }
 

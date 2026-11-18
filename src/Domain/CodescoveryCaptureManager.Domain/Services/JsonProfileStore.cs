@@ -1,3 +1,4 @@
+using CodescoveryCaptureManager.Domain.Diagnostics;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -60,7 +61,7 @@ namespace CodescoveryCaptureManager.Domain.Services
             }
             catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
             {
-                Console.WriteLine($"Could not read {path}. {ex.Message}");
+                AppLog.Error($"Could not read {path}.", ex);
                 KeepBackup(path);
                 return fallback;
             }
@@ -78,7 +79,7 @@ namespace CodescoveryCaptureManager.Domain.Services
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                Console.WriteLine($"Could not save {fileName}. {ex.Message}");
+                AppLog.Error($"Could not save {fileName}.", ex);
             }
         }
 
@@ -90,7 +91,7 @@ namespace CodescoveryCaptureManager.Domain.Services
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                Console.WriteLine($"Could not back up {path}. {ex.Message}");
+                AppLog.Warning($"Could not back up {path}. {ex.Message}");
             }
         }
     }

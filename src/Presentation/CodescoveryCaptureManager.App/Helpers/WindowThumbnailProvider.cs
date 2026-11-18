@@ -1,3 +1,4 @@
+using CodescoveryCaptureManager.Domain.Diagnostics;
 using System;
 using System.Diagnostics;
 using System.Drawing;
@@ -70,7 +71,7 @@ namespace CodescoveryCaptureManager.App.Helpers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Thumbnail failed for {windowHandle}. {ex.Message}");
+                AppLog.Warning($"Thumbnail failed for {windowHandle}. {ex.Message}");
                 return null;
             }
         }

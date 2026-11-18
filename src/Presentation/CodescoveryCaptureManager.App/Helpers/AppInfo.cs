@@ -1,5 +1,7 @@
+using CodescoveryCaptureManager.Domain.Diagnostics;
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
@@ -31,12 +33,28 @@ namespace CodescoveryCaptureManager.App.Helpers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Could not open {url}. {ex.Message}");
+                AppLog.Warning($"Could not open {url}. {ex.Message}");
             }
         }
 
+        /// <summary>Opens the folder with the log files in Explorer.</summary>
+        public static void OpenLogsFolder()
+        {
+            try
+            {
+                var directory = Path.GetDirectoryName(AppLog.FilePath);
+                Directory.CreateDirectory(directory);
+                Process.Start(new ProcessStartInfo(directory) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warning($"Could not open the logs folder. {ex.Message}");
+            }
+        }
+
+        // The log path holds the Windows user name, so the issue only says where to find the file.
         private static string BuildIssueTemplate()
-            => $"**What happened?**\n\n\n**What did you expect?**\n\n\n**Steps to reproduce**\n1. \n\n---\n{DiagnosticInfo()}";
+            => $"**What happened?**\n\n\n**What did you expect?**\n\n\n**Steps to reproduce**\n1. \n\n**Log**\nSettings > About > Open logs folder, then attach `{RollingFileLog.FileName}` if it helps.\n\n---\n{DiagnosticInfo()}";
 
         private static string ReadVersion()
         {

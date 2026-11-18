@@ -8,7 +8,7 @@ Fixed 2026-11-02 (see decisions.md): monitoring loop try/catch + observed task, 
 2. **Minimized windows**: Graphics Capture yields no/frozen frames for minimized windows; no detection or fallback.
 3. **Capture stop shows empty surface**: no placeholder/status shown to user when capture stops (closed window, error).
 4. **Elevated windows**: app runs `asInvoker`; elevated targets can't be captured, no message.
-5. **No real logging** (only `Console.WriteLine`); no global crash handling (`DispatcherUnhandledException`, `TaskScheduler.UnobservedTaskException`).
+5. Logging and crash handlers exist (logging.md), but the crash handlers were never seen firing in a real crash.
 6. Dictionary is mutated from monitoring tick and picker, both on UI thread; keep it that way or add locking.
 
 ## Correctness / design

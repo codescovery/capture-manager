@@ -1,3 +1,4 @@
+using CodescoveryCaptureManager.Domain.Diagnostics;
 using System;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -27,7 +28,7 @@ namespace CodescoveryCaptureManager.Domain.Helpers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Snapshot failed for {windowHandle}. {ex.Message}");
+                AppLog.Warning($"Snapshot failed for {windowHandle}. {ex.Message}");
                 return null;
             }
         }

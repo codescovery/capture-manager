@@ -184,6 +184,8 @@ namespace CodescoveryCaptureManager.App.Windows
 
         private void ReportIssue_OnClick(object sender, RoutedEventArgs e) => AppInfo.OpenInBrowser(AppInfo.NewIssueUrl());
 
+        private void OpenLogs_OnClick(object sender, RoutedEventArgs e) => AppInfo.OpenLogsFolder();
+
         private void Releases_OnClick(object sender, RoutedEventArgs e) => AppInfo.OpenInBrowser(AppInfo.ReleasesUrl);
 
         private void License_OnClick(object sender, RoutedEventArgs e) => AppInfo.OpenInBrowser(AppInfo.LicenseUrl);

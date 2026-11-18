@@ -1,3 +1,4 @@
+using CodescoveryCaptureManager.Domain.Diagnostics;
 using System;
 using System.Runtime.InteropServices;
 using SharpDX.MediaFoundation;
@@ -144,7 +145,7 @@ namespace CodescoveryCaptureManager.Domain.Streaming
             var vtable = *(IntPtr**)codec;
             var call = (delegate* unmanaged[Stdcall]<IntPtr, Guid*, Variant*, int>)vtable[SetValueVtableIndex];
             var hr = call(codec, &api, &variant);
-            if (hr < 0) Console.WriteLine($"Encoder setting {api} not applied (0x{hr:X8}).");
+            if (hr < 0) AppLog.Warning($"Encoder setting {api} not applied (0x{hr:X8}).");
         }
     }
 }
