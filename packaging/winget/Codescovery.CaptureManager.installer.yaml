@@ -7,7 +7,7 @@ InstallerSwitches:
   SilentWithProgress: --silent
 Installers:
   - Architecture: x64
-    InstallerUrl: https://github.com/codescovery/captureManager/releases/download/v0.0.0/CodescoveryCaptureManager-win-Setup.exe
+    InstallerUrl: https://github.com/codescovery/capture-manager/releases/download/v0.0.0/CodescoveryCaptureManager-win-Setup.exe
     InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
 ManifestType: installer
 ManifestVersion: 1.6.0

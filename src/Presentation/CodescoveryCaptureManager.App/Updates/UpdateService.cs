@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using CodescoveryCaptureManager.App.Helpers;
 using System.Threading;
 using System.Threading.Tasks;
 using Velopack;
@@ -8,9 +9,7 @@ namespace CodescoveryCaptureManager.App.Updates
 {
     internal sealed class UpdateService
     {
-        private const string RepositoryUrl = "https://github.com/codescovery/captureManager";
-
-        private readonly UpdateManager _updateManager = new(new GithubSource(RepositoryUrl, null, false));
+        private readonly UpdateManager _updateManager = new(new GithubSource(AppInfo.RepositoryUrl, null, false));
 
         public async Task StageUpdateAsync(CancellationToken cancellationToken = default)
         {

@@ -8,7 +8,7 @@ permissions:
   contents: write
 
 env:
-  REPO_URL: https://github.com/codescovery/captureManager
+  REPO_URL: https://github.com/codescovery/capture-manager
   PACK_ID: CodescoveryCaptureManager
   VPK_VERSION: 1.2.161
 
